@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unidad 1 Excel | FEDECOMPU</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary:   #1565c0;
+            --primary-light: #1976d2;
+            --secondary: #0d47a1;
+            --accent:    #ff8f00;
+            --danger:    #d32f2f;
+            --dark:      #2c3e50;
+            --glass:     rgba(255,255,255,0.98);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family:'Poppins',sans-serif;
+            background:linear-gradient(135deg,#e3f2fd 0%,#bbdefb 100%);
+            min-height:100vh; color:#333; padding-bottom:80px;
+        }
+        .main-container { max-width:1000px; margin:0 auto; padding:90px 20px 40px; }
+
+        /* ── HUD FIJO ── */
+        #hud {
+            position:fixed; top:0; left:0; right:0; z-index:9999;
+            background:rgba(13,71,161,0.97); color:white;
+            display:none; align-items:center; justify-content:space-between;
+            padding:8px 24px; gap:10px; flex-wrap:wrap;
+            box-shadow:0 4px 20px rgba(0,0,0,0.4);
+            border-bottom:3px solid var(--accent);
+        }
+        .hud-item { display:flex; flex-direction:column; align-items:center; }
+        .hud-label { font-size:0.55em; opacity:0.65; text-transform:uppercase; letter-spacing:1px; }
+        .hud-val   { font-size:1.05em; font-weight:800; }
+        #hud-global { color:#ffeb3b; font-size:1.5em !important; }
+        #hud-global.urgente { color:#ff4757 !important; animation:blink .5s infinite alternate; }
+        #hud-sec.urgente    { color:#ff4757 !important; animation:blink .5s infinite alternate; }
+        @keyframes blink { from{opacity:1}to{opacity:.35} }
+
+        /* ── OVERLAY TIEMPO ── */
+        #overlay-block {
+            display:none; position:fixed; inset:0; z-index:999999;
+            background:rgba(0,0,0,0.95); color:white;
+            flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px;
+        }
+        #overlay-block.show { display:flex; }
+
+        /* ── HEADER ── */
+        .header-box {
+            background:linear-gradient(to right,var(--secondary),var(--primary));
+            color:white; padding:28px 30px; border-radius:20px;
+            box-shadow:0 10px 30px rgba(21,101,192,0.4); text-align:center; margin-bottom:22px;
+        }
+        .header-box h1 { font-weight:800; font-size:1.6em; }
+        .header-box p  { opacity:.85; margin-top:4px; }
+
+        /* ── PANTALLAS ── */
+        .screen { display:none; }
+        .screen.active { display:block; animation:fadeIn .4s ease; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)} }
+
+        /* ── CARDS ── */
+        .card {
+            background:var(--glass); border-radius:20px; padding:30px;
+            box-shadow:0 8px 25px rgba(0,0,0,.1); border-left:6px solid var(--primary);
+            margin-bottom:22px;
+        }
+        .card h3 { color:var(--secondary); margin-bottom:14px; font-weight:800; font-size:1.3em;
+                   border-bottom:2px solid #e3f2fd; padding-bottom:8px;
+                   display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+
+        /* ── LOGIN ── */
+        #screen-login { max-width:580px; margin:60px auto; }
+        .login-box { background:white; padding:38px; border-radius:20px; box-shadow:0 20px 50px rgba(0,0,0,.12); text-align:center; }
+        .login-input { width:100%; padding:13px; border-radius:10px; border:2px solid #ddd; margin-bottom:18px;
+                       font-size:.95rem; font-family:'Poppins',sans-serif; background:#f9f9f9; text-align:center; }
+        .login-input:focus { outline:none; border-color:var(--primary); background:#fff; }
+
+        /* ── BOTONES ── */
+        .btn {
+            background:var(--primary); color:white; border:none;
+            padding:13px 28px; border-radius:50px; font-weight:800; cursor:pointer;
+            transition:.2s; font-family:'Poppins',sans-serif; font-size:.93rem;
+            box-shadow:0 5px 15px rgba(21,101,192,.3);
+        }
+        .btn:hover { transform:scale(1.02); background:var(--secondary); }
+        .btn-accent  { background:var(--accent); box-shadow:0 5px 15px rgba(255,143,0,.3); }
+        .btn-accent:hover { background:#e65100; }
+        .btn-danger  { background:var(--danger); box-shadow:0 5px 15px rgba(211,47,47,.3); }
+        .btn-block   { width:100%; display:block; margin-top:14px; }
+        .btn-next    { background:var(--accent); display:none; }
+        .btn-verify  { background:#1565c0; }
+
+        /* ── PDF ── */
+        .pdf-viewer { width:100%; height:580px; border:2px solid #ddd; border-radius:12px; margin-bottom:16px; }
+
+        /* ── TIMER BADGE ── */
+        .tbadge { background:var(--dark); color:#ffeb3b; padding:4px 14px; border-radius:20px;
+                  font-family:monospace; font-size:1rem; border:2px solid #ffeb3b; display:inline-block; }
+        .tbadge.warn { border-color:#ff8f00; color:#ff8f00; }
+        .tbadge.danger { border-color:#ff4757; color:#ff4757; animation:blink .5s infinite alternate; }
+
+        /* ── FEEDBACK ── */
+        .feedback { display:none; margin-top:14px; padding:12px 16px; border-radius:10px;
+                    text-align:center; font-weight:700; font-size:.95rem; }
+
+        /* SEC 1: DROPDOWN */
+        .def-row { background:#e3f2fd; border:1px solid #90caf9; border-radius:10px; padding:12px 16px;
+                   margin-bottom:9px; display:flex; justify-content:space-between; align-items:center;
+                   gap:10px; flex-wrap:wrap; }
+        .def-row span { font-size:.87rem; font-weight:600; flex:1; min-width:200px; color:var(--dark); }
+        .def-sel { padding:8px 10px; border-radius:8px; border:1.5px solid #aaa; font-size:.85rem;
+                   min-width:165px; font-family:'Poppins',sans-serif; }
+        .def-sel.ok  { border-color:var(--primary); background:#e3f2fd; }
+        .def-sel.err { border-color:var(--danger);  background:#ffebee; }
+
+        /* SEC 2: MATCH */
+        .match-wrap { display:flex; gap:24px; }
+        .match-col  { flex:1; }
+        .match-btn  { background:white; border:2px solid #90caf9; padding:11px 14px; border-radius:10px;
+                      cursor:pointer; text-align:center; font-size:.84rem; font-weight:600;
+                      transition:.2s; font-family:'Poppins',sans-serif; margin-bottom:8px; display:block; width:100%; }
+        .match-btn:hover  { background:#e3f2fd; border-color:var(--primary); }
+        .match-btn.sel    { background:var(--primary); color:white; border-color:var(--secondary); box-shadow:0 0 0 3px rgba(21,101,192,.3); }
+        .match-btn.solved { background:#bbdefb; border-color:var(--primary); color:var(--secondary); cursor:default; pointer-events:none; }
+        .match-btn.wrong  { background:#ffebee; border-color:var(--danger); animation:shake .35s; }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+        /* SEC 3: V/F */
+        .vf-row { background:#e3f2fd; border:1px solid #90caf9; border-radius:10px; padding:11px 14px;
+                  margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;
+                  gap:10px; flex-wrap:wrap; }
+        .vf-row span { font-size:.87rem; flex:1; min-width:200px; }
+        .vf-btns { display:flex; gap:8px; }
+        .vf-btn { padding:7px 16px; border:2px solid #ccc; border-radius:8px; cursor:pointer;
+                  font-weight:800; font-size:.82rem; font-family:'Poppins',sans-serif; background:white; transition:.2s; }
+        .vf-btn:hover  { background:#e3f2fd; border-color:var(--primary); }
+        .vf-btn.sel-v  { background:#1565c0; color:white; border-color:#0d47a1; }
+        .vf-btn.sel-f  { background:var(--danger); color:white; border-color:#b71c1c; }
+        .vf-btn.ok  { background:var(--primary) !important; color:white !important; border-color:var(--secondary) !important; }
+        .vf-btn.err { background:var(--danger)  !important; color:white !important; border-color:#b71c1c   !important; }
+
+        /* SEC 4: BANCO DE PALABRAS */
+        .bank-area { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; padding:12px;
+                     background:#e3f2fd; border-radius:12px; border:1px dashed #90caf9; }
+        .bank-word { padding:6px 15px; background:white; border:2px solid var(--primary); color:var(--secondary);
+                     border-radius:20px; font-size:.83rem; font-weight:700; cursor:pointer; transition:.2s;
+                     font-family:'Poppins',sans-serif; }
+        .bank-word:hover { background:var(--primary); color:white; }
+        .bank-word.used  { background:#ccc; border-color:#bbb; color:#888; cursor:default; text-decoration:line-through; }
+        .bank-word.sel   { background:var(--accent); color:white; border-color:#e65100; transform:scale(1.08); }
+        .blank-row { background:#e3f2fd; border:1px solid #90caf9; border-radius:10px; padding:11px 14px;
+                     margin-bottom:8px; font-size:.88rem; line-height:1.9; }
+        .blank-inp { display:inline-block; min-width:130px; padding:4px 10px; border-bottom:2.5px dashed #aaa;
+                     cursor:pointer; font-weight:700; color:var(--primary); text-align:center;
+                     border-radius:6px 6px 0 0; transition:.2s; }
+        .blank-inp:hover  { background:#bbdefb; }
+        .blank-inp.filled { border-bottom:2.5px solid var(--primary); background:#bbdefb; }
+        .blank-inp.ok  { border-bottom:2.5px solid var(--primary); background:#bbdefb; }
+        .blank-inp.err { border-bottom:2.5px solid var(--danger);  background:#ffebee; }
+
+        /* SEC 5: TABLA */
+        .tabla-wrap { overflow-x:auto; }
+        table.act-table { width:100%; border-collapse:collapse; font-size:.87rem; }
+        table.act-table th { background:var(--primary); color:white; padding:10px 12px; text-align:center; }
+        table.act-table td { border:1px solid #ddd; padding:8px 12px; }
+        table.act-table tr:nth-child(even) td { background:#f0f7ff; }
+        .tbl-inp { width:100%; padding:6px 8px; border:1.5px solid #aaa; border-radius:6px;
+                   font-family:'Poppins',sans-serif; font-size:.85rem; text-align:center; }
+        .tbl-inp.ok  { border-color:var(--primary); background:#e3f2fd; }
+        .tbl-inp.err { border-color:var(--danger);  background:#ffebee; }
+
+        /* QUIZ */
+        .q-box { background:white; padding:26px; border-radius:12px; border:1px solid #e3f2fd;
+                 box-shadow:0 4px 15px rgba(0,0,0,.06); }
+        .q-opt { display:block; padding:12px 16px; border:2px solid #eee; margin:9px 0;
+                 border-radius:10px; cursor:pointer; font-size:.97rem; transition:.2s; background:white; }
+        .q-opt:hover { background:#e3f2fd; border-color:var(--primary); }
+        .q-opt input { margin-right:12px; transform:scale(1.2); }
+        .qbar-wrap { height:8px; background:#eee; border-radius:10px; margin:10px 0; }
+        .qbar { height:8px; background:linear-gradient(to right,var(--primary),var(--accent)); border-radius:10px; transition:width .4s; }
+
+        /* UPLOAD */
+        .upload-zone { border:3px dashed #90caf9; border-radius:16px; padding:30px; text-align:center;
+                       background:#f0f7ff; cursor:pointer; transition:.2s; }
+        .upload-zone:hover { border-color:var(--primary); background:#e3f2fd; }
+        .upload-zone.uploaded { border-color:#2e7d32; background:#e8f5e9; border-style:solid; }
+        #file-input { display:none; }
+
+        /* RESULTADOS */
+        .res-score { font-size:4rem; font-weight:800; color:var(--primary); margin:12px 0; }
+        .res-grid  { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; margin:18px 0; }
+        .res-cell  { background:#f9f9f9; border-radius:12px; padding:12px; text-align:center; border-top:4px solid #ccc; }
+        .res-cell.full    { border-color:var(--primary); }
+        .res-cell.partial { border-color:var(--accent); }
+        .res-cell.zero    { border-color:var(--danger); }
+        .res-cell .rval   { font-size:1.5em; font-weight:800; }
+        .res-cell .rlbl   { font-size:.68em; color:#666; margin-top:2px; }
+
+        /* HUD pills */
+        .pill { background:rgba(255,255,255,.12); border-radius:20px; padding:3px 12px; font-size:.7em; font-weight:700; }
+        .pill.done { background:rgba(21,101,192,.4); }
+
+        @media(max-width:600px){ .match-wrap{ flex-direction:column; } }
+    </style>
+    <!-- FIREBASE -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<!-- OVERLAY BLOQUEADO -->
+<div id="overlay-block">
+    <div style="font-size:5rem;">⏰</div>
+    <h1 style="font-size:2.2rem;margin:14px 0;">¡TIEMPO AGOTADO!</h1>
+    <p style="opacity:.8;max-width:420px;font-size:1.05em;">Los 35 minutos de clase han terminado.<br>El sistema ha sido bloqueado automáticamente.</p>
+    <p style="margin-top:8px;font-size:.87em;opacity:.6;">Tu nota ha sido registrada. Consulta al profesor.</p>
+    <div id="bl-nota" style="display:none;"></div>
+    <button class="btn" style="margin-top:28px;background:#1565c0;" onclick="volverAlInicio()">🏠 Volver al Inicio</button>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+    <div class="hud-item">
+        <span class="hud-label">⏰ Tiempo total</span>
+        <span class="hud-val" id="hud-global">35:00</span>
+    </div>
+    <div class="hud-item">
+        <span class="hud-label">⏱ Sección</span>
+        <span class="hud-val" id="hud-sec" style="color:var(--accent);">--:--</span>
+    </div>
+    <div class="hud-item">
+        <span class="hud-label">👤 Estudiante</span>
+        <span class="hud-val" id="hud-user" style="font-size:.76em;">—</span>
+    </div>
+    <div class="hud-item">
+        <span class="hud-label">📊 Nota</span>
+        <span class="hud-val" id="hud-nota" style="color:#69f0ae;">0/10</span>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="pill" id="p1">S1:—</span>
+        <span class="pill" id="p2">S2:—</span>
+        <span class="pill" id="p3">S3:—</span>
+        <span class="pill" id="p4">S4:—</span>
+        <span class="pill" id="p5">S5:—</span>
+        <span class="pill" id="pt">Test:—</span>
+    </div>
+</div>
+
+<!-- ════ LOGIN ════ -->
+<div id="screen-login" class="screen active">
+<div class="main-container" style="max-width:580px;margin:60px auto;padding-top:0;">
+    <div class="header-box">
+        <div style="font-size:2.8rem;">📊</div>
+        <h1>UNIDAD 1 — EXCEL</h1>
+        <p>Módulo de Excel — Semana 1 | FEDECOMPU</p>
+    </div>
+    <div class="login-box">
+        <h3 style="color:var(--secondary);margin-bottom:6px;" id="login-titulo">BIENVENIDO/A</h3>
+        <p style="color:#666;font-size:.88rem;margin-bottom:16px;">Profesor: Ing. William Proaño Martínez</p>
+        <!-- Nombre detectado desde Matilde -->
+        <div id="login-nombre-detectado" style="display:none;background:#e3f2fd;border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:center;">
+            <div style="font-size:.8rem;color:#1565c0;font-weight:700;margin-bottom:4px;">👤 Estudiante identificado:</div>
+            <div id="login-nombre-display" style="font-size:1.1rem;font-weight:800;color:#0d47a1;"></div>
+        </div>
+        <!-- Fallback si no viene nombre -->
+        <div id="login-nombre-manual" style="display:none;">
+            <div style="background:#fff8e1;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:.82em;color:#5d4037;">
+                ⚠️ Accede desde el portal de <strong>Matilde Esther</strong> para registrarte automáticamente.
+            </div>
+            <input type="text" id="student-input" class="login-input" placeholder="Escribe tus nombres y apellidos completos" maxlength="80">
+        </div>
+        <div style="background:#fff8e1;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:.82em;color:#5d4037;">
+            ⏱️ <b>Atención:</b> Tienes <b>35 minutos</b> en total — 5 secciones × 5 min + 10 min examen.
+        </div>
+        <button class="btn btn-block" onclick="doLogin()">🚀 INGRESAR AL AULA</button>
+    </div>
+</div>
+</div>
+
+<!-- ════ ACTIVIDADES ════ -->
+<div id="screen-act" class="screen">
+<div class="main-container">
+    <div class="header-box">
+        <h1>📝 Actividades — Unidad 1 Excel</h1>
+        <p>Estudiante: <span id="user-disp"></span></p>
+    </div>
+
+    <!-- SEC 1: DROPDOWN - Identificar fórmulas -->
+    <div id="sec-1" class="activity" style="display:none;">
+        <div class="card">
+            <h3>🔤 Sección 1 — Identificar Fórmulas Excel <span id="tb1" class="tbadge">05:00</span></h3>
+            <p style="font-size:.86rem;color:#555;margin-bottom:14px;">Selecciona la respuesta correcta según el ejercicio de la clase (Hojas ARTICULOS e INFORME).</p>
+            <div id="cont1"></div>
+            <div class="feedback" id="msg1"></div>
+            <button class="btn btn-verify btn-block" style="max-width:220px;margin-top:10px;" onclick="checkSec1()">✔ Verificar</button>
+            <button id="nx1" class="btn btn-next btn-block" style="max-width:220px;" onclick="goSec(2)">Siguiente ➡️</button>
+        </div>
+    </div>
+
+    <!-- SEC 2: MATCH - Conceptos Excel -->
+    <div id="sec-2" class="activity" style="display:none;">
+        <div class="card">
+            <h3>🔗 Sección 2 — Relacionar Conceptos <span id="tb2" class="tbadge">05:00</span></h3>
+            <p style="font-size:.86rem;color:#555;margin-bottom:14px;">Haz clic en un elemento de la izquierda y luego en su par correcto de la derecha.</p>
+            <div class="match-wrap">
+                <div class="match-col" id="m-left"></div>
+                <div class="match-col" id="m-right"></div>
+            </div>
+            <div class="feedback" id="msg2"></div>
+            <button class="btn btn-verify btn-block" style="max-width:220px;margin-top:10px;" onclick="checkSec2()">✔ Verificar</button>
+            <button id="nx2" class="btn btn-next btn-block" style="max-width:220px;" onclick="goSec(3)">Siguiente ➡️</button>
+        </div>
+    </div>
+
+    <!-- SEC 3: V/F -->
+    <div id="sec-3" class="activity" style="display:none;">
+        <div class="card">
+            <h3>✅ Sección 3 — Verdadero o Falso <span id="tb3" class="tbadge">05:00</span></h3>
+            <p style="font-size:.86rem;color:#555;margin-bottom:14px;">Determina si cada afirmación sobre Excel es Verdadera (V) o Falsa (F).</p>
+            <div id="cont3"></div>
+            <div class="feedback" id="msg3"></div>
+            <button class="btn btn-verify btn-block" style="max-width:220px;margin-top:10px;" onclick="checkSec3()">✔ Verificar</button>
+            <button id="nx3" class="btn btn-next btn-block" style="max-width:220px;" onclick="goSec(4)">Siguiente ➡️</button>
+        </div>
+    </div>
+
+    <!-- SEC 4: BANCO DE PALABRAS -->
+    <div id="sec-4" class="activity" style="display:none;">
+        <div class="card">
+            <h3>💬 Sección 4 — Completar con Banco de Palabras <span id="tb4" class="tbadge">05:00</span></h3>
+            <p style="font-size:.86rem;color:#555;margin-bottom:10px;">Haz clic en una palabra del banco y luego en el espacio en blanco correspondiente.</p>
+            <div class="bank-area" id="bank4"></div>
+            <div id="cont4"></div>
+            <div class="feedback" id="msg4"></div>
+            <button class="btn btn-verify btn-block" style="max-width:220px;margin-top:10px;" onclick="checkSec4()">✔ Verificar</button>
+            <button id="nx4" class="btn btn-next btn-block" style="max-width:220px;" onclick="goSec(5)">Siguiente ➡️</button>
+        </div>
+    </div>
+
+    <!-- SEC 5: TABLA COMPLETAR -->
+    <div id="sec-5" class="activity" style="display:none;">
+        <div class="card">
+            <h3>📋 Sección 5 — Completar la Tabla de Cálculo <span id="tb5" class="tbadge">05:00</span></h3>
+            <p style="font-size:.86rem;color:#555;margin-bottom:14px;">Completa los valores que faltan en la planilla INFORME ANUAL según las fórmulas indicadas.</p>
+            <div class="tabla-wrap">
+                <table class="act-table" id="tabla5">
+                    <thead>
+                        <tr>
+                            <th>Sucursal</th>
+                            <th>Ingresos</th>
+                            <th>Egresos</th>
+                            <th>Saldo (Ing – Egr)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody5"></tbody>
+                </table>
+            </div>
+            <p style="font-size:.78rem;color:#888;margin-top:8px;">💡 Escribe solo el número (ej: -2300 o 750)</p>
+            <div class="feedback" id="msg5"></div>
+            <button class="btn btn-verify btn-block" style="max-width:220px;margin-top:10px;" onclick="checkSec5()">✔ Verificar</button>
+            <button id="nx5" class="btn btn-next btn-block" style="max-width:220px;" onclick="goUpload()">📎 Subir Archivo ➡️</button>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- ════ UPLOAD ════ -->
+<div id="screen-upload" class="screen">
+<div class="main-container" style="max-width:680px;">
+    <div class="header-box">
+        <div style="font-size:2.5rem;">📁</div>
+        <h1>SUBIR ARCHIVO DE PRÁCTICA</h1>
+        <p>Debes subir tu archivo de Excel antes de continuar al examen</p>
+    </div>
+    <div class="card" style="text-align:center;">
+        <p style="color:#555;margin-bottom:20px;font-size:.93rem;">Sube el archivo <strong>PRACTICA 1 [tu nombre].xlsx</strong> que elaboraste durante la clase.</p>
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+            <div style="font-size:3rem;margin-bottom:10px;">📤</div>
+            <p style="font-weight:700;color:var(--secondary);font-size:1.1em;">Haz clic aquí para subir tu archivo</p>
+            <p style="color:#888;font-size:.85rem;margin-top:6px;">Formatos aceptados: .xlsx, .xls</p>
+            <div id="upload-status" style="margin-top:12px;display:none;font-weight:700;color:#2e7d32;font-size:1rem;"></div>
+        </div>
+        <input type="file" id="file-input" accept=".xlsx,.xls,.ods" onchange="handleUpload(this)">
+        <button id="btn-go-test" class="btn btn-block" style="max-width:280px;margin:18px auto 0;background:#aaa;pointer-events:none;" onclick="goTest()">
+            🎯 Ir al Examen Final ➡️
+        </button>
+        <p style="font-size:.78rem;color:#999;margin-top:10px;">⏰ El tiempo sigue corriendo mientras subes el archivo.</p>
+    </div>
+</div>
+</div>
+
+<!-- ════ TEST FINAL ════ -->
+<div id="screen-test" class="screen">
+<div class="main-container">
+    <div class="card">
+        <span style="background:var(--danger);color:white;padding:4px 14px;border-radius:20px;font-size:.78em;font-weight:700;">🏆 EXAMEN FINAL — 10 min — 5 puntos</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0;">
+            <span id="qcount" style="font-weight:800;color:var(--secondary);">Pregunta 1/10</span>
+            <span id="test-timer" class="tbadge">10:00</span>
+        </div>
+        <div class="qbar-wrap"><div class="qbar" id="qbar" style="width:10%"></div></div>
+        <div class="q-box" id="quiz-box"></div>
+        <button class="btn btn-accent btn-block" style="max-width:260px;margin-top:14px;" onclick="nextQ()">Siguiente Pregunta ➡️</button>
+    </div>
+</div>
+</div>
+
+<!-- ════ RESULTADO ════ -->
+<div id="screen-result" class="screen">
+<div class="main-container">
+    <div class="card" style="text-align:center;padding:48px 32px;">
+        <div style="font-size:4rem;margin-bottom:16px;">✅</div>
+        <h1 style="color:var(--secondary);margin-bottom:12px;font-size:1.6rem;">¡ACTIVIDAD COMPLETADA!</h1>
+        <div style="background:#e8f5e9;border-radius:14px;padding:20px;margin:16px 0;border:2px solid #a5d6a7;">
+            <p style="font-size:1rem;color:#2e7d32;font-weight:700;margin-bottom:6px;">📊 Tu nota ha sido registrada exitosamente</p>
+            <p style="font-size:.88rem;color:#388e3c;">El profesor William Proaño puede ver tu calificación en el sistema.</p>
+        </div>
+        <p style="color:#666;font-size:.9rem;margin-top:8px;"><strong>Estudiante:</strong> <span id="r-name"></span></p>
+        <p style="color:#888;font-size:.82rem;margin-top:4px;">Unidad 1 Excel — FEDECOMPU · Matilde Esther</p>
+        <div style="margin-top:20px;padding:14px;background:#fff8e1;border-radius:10px;border:1px solid #ffe082;">
+            <p style="font-size:.82rem;color:#5d4037;">💡 Puedes revisar tus notas ingresando al portal de Matilde Esther con tu cuenta.</p>
+        </div>
+        <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+            <button class="btn" style="background:#1565c0;" onclick="volverAlInicio()">🏠 Volver al Inicio</button>
+        </div>
+    </div>
+</div>
+</div>
+
+<script>
+/* ══════════════════════════════
+   ESTADO GLOBAL
+══════════════════════════════ */
+let user = "", globalSeg = 35*60, gInt = null, sInt = null;
+let scores = {1:null,2:null,3:null,4:null,5:null}, testPts = 0;
+let matchSel = null, matchPairs = [], matchOkCount = 0;
+let selWord = null;
+let quizPool = [], qIdx = 0, qScore = 0, testInt = null;
+let uploadedFile = null;
+
+/* ══════════════════════════════
+   DATOS SEC 1: DROPDOWN - Fórmulas
+══════════════════════════════ */
+const D1 = [
+    {q:"La columna Subtotal en la hoja ARTICULOS se calcula:", a:"Cantidad * Precio Unitario", ops:["Cantidad * Precio Unitario","Subtotal + IVA","Ingresos - Egresos","Cantidad + Precio"]},
+    {q:"El IVA (15%) de la hoja ARTICULOS se puede calcular como:", a:"Subtotal * 0.15", ops:["Subtotal * 0.15","Subtotal + 15","Subtotal / 15","Subtotal * 1.15"]},
+    {q:"La columna Total en ARTICULOS se calcula:", a:"Subtotal + IVA", ops:["Subtotal + IVA","Subtotal - IVA","Cantidad * Precio","IVA * 15%"]},
+    {q:"La fórmula Subtotal * 15% equivale a:", a:"Subtotal * 0.15", ops:["Subtotal * 0.15","Subtotal * 15","Subtotal / 15%","Subtotal + 0.15"]},
+    {q:"La fila Total de ARTICULOS en la columna Subtotal debe mostrar:", a:"La suma de todos los Subtotales", ops:["La suma de todos los Subtotales","El mayor Subtotal","El Subtotal del último artículo","El promedio de Subtotales"]},
+    {q:"La columna Saldo en la hoja INFORME se calcula:", a:"Ingresos – Egresos", ops:["Ingresos – Egresos","Ingresos + Egresos","Egresos – Ingresos","Ingresos * Egresos"]},
+    {q:"El Saldo de Guayaquil (Ingresos: 500, Egresos: 2800) es:", a:"-2300", ops:["-2300","2300","3300","-3300"]},
+    {q:"El Saldo de Ambato (Ingresos: 4000, Egresos: 2500) es:", a:"1500", ops:["1500","-1500","6500","2500"]},
+];
+
+/* ══════════════════════════════
+   DATOS SEC 2: MATCH
+══════════════════════════════ */
+const D2 = [
+    {l:"Hoja ARTICULOS",          r:"Planilla con Subtotal, IVA y Total",           p:0},
+    {l:"Hoja INFORME",            r:"Informe Anual con Ingresos, Egresos y Saldo",  p:1},
+    {l:"Subtotal * 0.15",         r:"Fórmula para calcular el IVA al 15%",          p:2},
+    {l:"Subtotal + IVA",          r:"Fórmula para calcular el Total",               p:3},
+    {l:"Ingresos – Egresos",      r:"Fórmula para calcular el Saldo",               p:4},
+    {l:"Combinar y Centrar",      r:"Botón para centrar el título INFORME ANUAL",   p:5},
+    {l:"Bordes y colores",        r:"Formato aplicado a ambas planillas",           p:6},
+    {l:"PRACTICA 1 + nombre",     r:"Nombre con que se guarda el archivo",          p:7},
+];
+
+/* ══════════════════════════════
+   DATOS SEC 3: V/F
+══════════════════════════════ */
+const D3 = [
+    {q:"La hoja 1 se denomina ARTICULOS.", r:true},
+    {q:"El Subtotal se calcula: Cantidad + Precio Unitario.", r:false},
+    {q:"El IVA se puede calcular como Subtotal * 15%.", r:true},
+    {q:"La fórmula Subtotal * 0.15 y Subtotal * 15% dan el mismo resultado.", r:true},
+    {q:"El Total de cada artículo se calcula: Subtotal – IVA.", r:false},
+    {q:"La fila Total de ARTICULOS muestra la suma de los Subtotales, IVA y Totales.", r:true},
+    {q:"La hoja 2 se denomina INFORME.", r:true},
+    {q:"El título INFORME ANUAL se centra usando Combinar y Centrar desde A1 hasta D1.", r:true},
+    {q:"El Saldo en INFORME se calcula: Ingresos + Egresos.", r:false},
+    {q:"El archivo se guarda con clave como PRACTICA 1 en la carpeta Documentos.", r:true},
+];
+
+/* ══════════════════════════════
+   DATOS SEC 4: COMPLETAR
+══════════════════════════════ */
+const D4 = [
+    {txt:"La hoja 1 se denomina ___ y contiene artículos como Goma, Lápiz y Cuaderno.",         ans:"ARTICULOS"},
+    {txt:"El ___ se calcula multiplicando Cantidad por Precio Unitario.",                         ans:"Subtotal"},
+    {txt:"El IVA se puede calcular como: Subtotal * ___  (en decimales).",                       ans:"0.15"},
+    {txt:"El Total de cada artículo se calcula: Subtotal + ___.",                                ans:"IVA"},
+    {txt:"La hoja 2 se denomina ___ y tiene sucursales como Guayaquil, Quito y Cuenca.",        ans:"INFORME"},
+    {txt:"El ___ en la hoja INFORME se calcula: Ingresos – Egresos.",                           ans:"Saldo"},
+    {txt:"El título INFORME ANUAL se centra usando el botón ___ desde A1 hasta D1.",             ans:"Combinar y Centrar"},
+    {txt:"El archivo se guarda con ___ como PRACTICA 1 en la carpeta Documentos.",              ans:"clave"},
+];
+const BANK4 = ["ARTICULOS","Subtotal","0.15","IVA","INFORME","Saldo","Combinar y Centrar","clave"];
+
+/* ══════════════════════════════
+   DATOS SEC 5: TABLA INFORME
+══════════════════════════════ */
+const T5 = [
+    {suc:"Guayaquil", ing:500,  egr:2800},
+    {suc:"Quito",     ing:1500, egr:9000},
+    {suc:"Ambato",    ing:4000, egr:2500},
+    {suc:"Riobamba",  ing:5000, egr:3500},
+    {suc:"Guaranda",  ing:1000, egr:7500},
+    {suc:"Cuenca",    ing:8000, egr:5000},
+];
+
+/* ══════════════════════════════
+   40 PREGUNTAS — SOLO CONTENIDO DEL DOCX
+══════════════════════════════ */
+const BANK_Q = [
+    // ── HOJA ARTICULOS ──
+    {q:"¿Cómo se denomina la Hoja 1 del ejercicio?",
+     a:"ARTICULOS", o:["INFORME","VENTAS","EMPLEADOS"]},
+    {q:"¿Cómo se calcula la columna Subtotal en la hoja ARTICULOS?",
+     a:"Cantidad * Precio Unitario", o:["Cantidad + Precio","Subtotal + IVA","Ingresos - Egresos"]},
+    {q:"¿Cuál de estas es una fórmula válida para calcular el IVA al 15%?",
+     a:"Subtotal * 0.15", o:["Subtotal * 0.12","Subtotal + 15","Subtotal / 15"]},
+    {q:"¿Cuál de estas es otra fórmula válida para el IVA al 15%?",
+     a:"Subtotal * 15%", o:["Subtotal * 15","Subtotal * 1.5","Subtotal / 0.15"]},
+    {q:"¿Cuál de estas también calcula correctamente el IVA al 15%?",
+     a:"Subtotal * 15 / 100", o:["Subtotal * 100 / 15","Subtotal - 15%","Subtotal + 15 / 100"]},
+    {q:"¿Cómo se calcula la columna Total en ARTICULOS?",
+     a:"Subtotal + IVA", o:["Subtotal - IVA","Cantidad * Precio","IVA * 100"]},
+    {q:"¿Qué debe mostrar la fila Total en la columna Subtotal de ARTICULOS?",
+     a:"La suma de todos los Subtotales", o:["El mayor Subtotal","El promedio de Subtotales","El último Subtotal"]},
+    {q:"¿Qué debe mostrar la fila Total en la columna IVA de ARTICULOS?",
+     a:"La suma de todos los IVA", o:["El mayor IVA","El promedio de IVA","El IVA del primer artículo"]},
+    {q:"¿Qué debe mostrar la fila Total en la columna Total de ARTICULOS?",
+     a:"La suma de todos los Totales", o:["El mayor Total","El último Total","El promedio de Totales"]},
+    {q:"¿Qué formato de presentación se aplica a la tabla ARTICULOS?",
+     a:"Bordes y colores por columnas", o:["Solo bordes","Solo colores","Sin formato"]},
+    {q:"¿Cuántos artículos tiene la planilla ARTICULOS?",
+     a:"4 artículos", o:["3 artículos","5 artículos","6 artículos"]},
+    {q:"¿Qué artículo tiene Cantidad 10 y Precio 2 en ARTICULOS?",
+     a:"Goma", o:["Lápiz","Lapicero","Cuaderno"]},
+    {q:"¿Qué artículo tiene Cantidad 20 y Precio 0.5 en ARTICULOS?",
+     a:"Lápiz", o:["Goma","Lapicero","Cuaderno"]},
+    {q:"¿Qué artículo tiene Cantidad 145 y Precio 0.8 en ARTICULOS?",
+     a:"Lapicero", o:["Lápiz","Goma","Cuaderno"]},
+    {q:"¿Qué artículo tiene Cantidad 15 y Precio 1.5 en ARTICULOS?",
+     a:"Cuaderno", o:["Lápiz","Goma","Lapicero"]},
+    {q:"¿Cuál es el Subtotal de la Goma (Cantidad 10, Precio 2)?",
+     a:"20", o:["12","5","8"]},
+    {q:"¿Cuál es el IVA (15%) de la Goma con Subtotal 20?",
+     a:"3", o:["2","4","5"]},
+    {q:"¿Cuál es el Total de la Goma (Subtotal 20, IVA 3)?",
+     a:"23", o:["20","17","25"]},
+    {q:"¿Cuál es el Subtotal del Lápiz (Cantidad 20, Precio 0.5)?",
+     a:"10", o:["20","5","15"]},
+    {q:"¿Cuál es el Subtotal del Cuaderno (Cantidad 15, Precio 1.5)?",
+     a:"22.5", o:["15","30","16.5"]},
+    // ── HOJA INFORME ──
+    {q:"¿Cómo se denomina la Hoja 2 del ejercicio?",
+     a:"INFORME", o:["ARTICULOS","VENTAS","DATOS"]},
+    {q:"¿Cómo se calcula la columna Saldo en la hoja INFORME?",
+     a:"Ingresos – Egresos", o:["Ingresos + Egresos","Egresos – Ingresos","Ingresos * Egresos"]},
+    {q:"¿Cuál es el título de la Hoja 2?",
+     a:"INFORME ANUAL", o:["INFORME MENSUAL","REPORTE ANUAL","INFORME GENERAL"]},
+    {q:"¿Entre qué celdas se centra el título INFORME ANUAL?",
+     a:"A1 hasta D1", o:["A1 hasta C1","A1 hasta E1","B1 hasta D1"]},
+    {q:"¿Qué botón se usa para centrar el título INFORME ANUAL?",
+     a:"Combinar y Centrar", o:["Alinear al centro","Fusionar celdas","Centrar texto"]},
+    {q:"¿Cuántas sucursales tiene la hoja INFORME?",
+     a:"6 sucursales", o:["4 sucursales","5 sucursales","7 sucursales"]},
+    {q:"¿Cuál es el Saldo de Guayaquil (Ingresos: 500, Egresos: 2800)?",
+     a:"-2300", o:["2300","3300","-3300"]},
+    {q:"¿Cuál es el Saldo de Quito (Ingresos: 1500, Egresos: 9000)?",
+     a:"-7500", o:["7500","10500","-10500"]},
+    {q:"¿Cuál es el Saldo de Ambato (Ingresos: 4000, Egresos: 2500)?",
+     a:"1500", o:["-1500","6500","2500"]},
+    {q:"¿Cuál es el Saldo de Riobamba (Ingresos: 5000, Egresos: 3500)?",
+     a:"1500", o:["-1500","8500","3500"]},
+    {q:"¿Cuál es el Saldo de Guaranda (Ingresos: 1000, Egresos: 7500)?",
+     a:"-6500", o:["6500","8500","-8500"]},
+    {q:"¿Cuál es el Saldo de Cuenca (Ingresos: 8000, Egresos: 5000)?",
+     a:"3000", o:["-3000","5000","8000"]},
+    {q:"¿Qué se calcula en la fila TOTAL de la hoja INFORME?",
+     a:"La suma de Ingresos, Egresos y Saldo de todas las sucursales",
+     o:["Solo el total de Ingresos","El promedio de Saldos","El mayor Saldo"]},
+    {q:"¿Qué formato de presentación se aplica a la tabla INFORME?",
+     a:"Bordes y colores por filas con colores distintos",
+     o:["Solo bordes","Colores por columnas","Sin formato"]},
+    // ── GUARDAR ──
+    {q:"¿Dónde se guarda el archivo de la práctica?",
+     a:"Carpeta Documentos", o:["Carpeta Escritorio","Carpeta Descargas","Carpeta Excel"]},
+    {q:"¿Cómo se llama el archivo que se guarda?",
+     a:"PRACTICA 1 seguido del primer nombre y apellido",
+     o:["EXCEL UNIDAD 1","FEDECOMPU PRACTICA","SEMANA 1"]},
+    {q:"¿Qué medida de seguridad se aplica al archivo?",
+     a:"Poner clave al archivo", o:["Compartirlo","Borrarlo","Guardarlo como PDF"]},
+    {q:"¿Qué función de Excel se usa para sumar una columna?",
+     a:"SUMA", o:["PROMEDIO","CONTAR","MAX"]},
+    {q:"¿Cuántas hojas tiene el ejercicio completo?",
+     a:"2 hojas", o:["1 hoja","3 hojas","4 hojas"]},
+    {q:"¿Cuál es la tasa de IVA usada en el ejercicio ARTICULOS?",
+     a:"15%", o:["12%","10%","18%"]},
+];
+
+/* ══════════════════════════════
+   SISTEMA DE TIEMPOS
+══════════════════════════════ */
+function startGlobal() {
+    gInt = setInterval(() => {
+        globalSeg--;
+        const m = Math.floor(globalSeg/60), s = globalSeg%60;
+        const el = document.getElementById('hud-global');
+        el.textContent = m+':'+(s<10?'0'+s:s);
+        if (globalSeg<=120) el.classList.add('urgente');
+        if (globalSeg<=0)   bloquear();
+    }, 1000);
+}
+
+function startSecTimer(n, seg) {
+    clearInterval(sInt);
+    let t = seg;
+    const sh = document.getElementById('hud-sec');
+    const bd = document.getElementById('tb'+n);
+    sh.classList.remove('urgente');
+    if (bd) bd.className='tbadge';
+    sInt = setInterval(() => {
+        t--;
+        const m=Math.floor(t/60), s=t%60;
+        const txt=m+':'+(s<10?'0'+s:s);
+        sh.textContent=txt;
+        if(bd) bd.textContent=txt;
+        if(t<=30)  { sh.classList.add('urgente'); if(bd)bd.className='tbadge danger'; }
+        else if(t<=120){ if(bd)bd.className='tbadge warn'; }
+        if(t<=0) { clearInterval(sInt); autoNext(n); }
+    }, 1000);
+}
+
+function autoNext(n) {
+    if (scores[n]===null) { scores[n]=0; setPill(n,0); updateNota(); }
+    alert('⏰ Tiempo de la Sección '+n+' agotado. Avanzando automáticamente.');
+    if (n<5) goSec(n+1); else goUpload();
+}
+
+function bloquear() {
+    clearInterval(gInt); clearInterval(sInt);
+    const nota = calcNota();
+    document.getElementById('bl-nota').textContent = 'Nota parcial: '+nota.toFixed(1)+' / 10';
+    document.getElementById('overlay-block').classList.add('show');
+    descargar();
+}
+
+function calcNota() {
+    let s=0; for(let i=1;i<=5;i++) if(scores[i]!==null) s+=scores[i];
+    return s+testPts;
+}
+function setPill(n, pts, key) {
+    const el = document.getElementById(key||'p'+n);
+    if(el){ el.textContent=(key?'Test:':'S'+n+':')+pts; el.classList.add('done'); }
+}
+function updateNota() { document.getElementById('hud-nota').textContent=calcNota().toFixed(1)+'/10'; }
+function award(n, pct) {
+    const p = pct>=0.8?1:pct>=0.5?0.5:0;
+    scores[n]=p; setPill(n,p); updateNota(); return p;
+}
+function showFb(n, pct, lbl) {
+    clearInterval(sInt);
+    const pts=award(n,pct);
+    const el=document.getElementById('msg'+n);
+    const nx=document.getElementById('nx'+n);
+    el.style.display='block';
+    if(pct>=0.8){ el.textContent='✅ '+lbl+' — ¡Excelente! +'+pts+' pt(s)'; el.style.background='#e3f2fd'; el.style.color='#0d47a1'; }
+    else if(pct>=0.5){ el.textContent='⚠️ '+lbl+' — Bien, revisa los errores. +'+pts+' pt(s)'; el.style.background='#fff9c4'; el.style.color='#5d4037'; }
+    else{ el.textContent='❌ '+lbl+' — Repasa el material. +'+pts+' pt(s)'; el.style.background='#ffebee'; el.style.color='#b71c1c'; }
+    if(nx) nx.style.display='block';
+}
+
+/* ══════════════════════════════
+   LOGIN
+══════════════════════════════ */
+// Detectar nombre desde sessionStorage (puesto por index.html al abrir la prueba)
+// o desde parámetro URL ?nombre=...
+function detectarNombreMatilde(){
+    // 1) sessionStorage
+    const ss = sessionStorage.getItem('matilde_nombre');
+    if(ss && ss.length>=4) return ss.trim();
+    // 2) parámetro URL
+    const params = new URLSearchParams(window.location.search);
+    const p = params.get('nombre');
+    if(p && p.length>=4) return decodeURIComponent(p).trim();
+    return null;
+}
+
+// Al cargar la página: mostrar nombre detectado o campo manual
+function initLogin(){
+    const nombre = detectarNombreMatilde();
+    if(nombre){
+        document.getElementById('login-titulo').textContent = '¡LISTO PARA LA PRUEBA!';
+        document.getElementById('login-nombre-display').textContent = nombre;
+        document.getElementById('login-nombre-detectado').style.display = 'block';
+        document.getElementById('login-nombre-manual').style.display = 'none';
+    } else {
+        document.getElementById('login-titulo').textContent = 'INGRESO AL AULA';
+        document.getElementById('login-nombre-detectado').style.display = 'none';
+        document.getElementById('login-nombre-manual').style.display = 'block';
+    }
+}
+// Ejecutar cuando el DOM esté completamente cargado
+if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', initLogin);
+} else {
+    initLogin();
+}
+
+function doLogin(){
+    let v = detectarNombreMatilde();
+    if(!v){
+        const inp = document.getElementById('student-input');
+        v = inp ? inp.value.trim() : '';
+    }
+    if(!v || v.length<4){ alert('Por favor escribe tu nombre completo.'); return; }
+    user=v;
+    document.getElementById('hud-user').textContent=user;
+    document.getElementById('user-disp').textContent=user;
+    document.getElementById('hud').style.display='flex';
+    startGlobal();
+    showScreen('screen-act');
+    setTimeout(()=>goSec(1),100);
+}
+
+function volverAlInicio(){
+    // Si hay opener (ventana padre) usarlo, sino ir al index
+    if(window.opener && !window.opener.closed){
+        window.close();
+    } else {
+        window.location.href='index.html';
+    }
+}
+
+function showScreen(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0,0);
+}
+
+/* ══════════════════════════════
+   NAVEGACIÓN DE SECCIONES
+══════════════════════════════ */
+function goSec(n){
+    document.querySelectorAll('.activity').forEach(a=>a.style.display='none');
+    const el=document.getElementById('sec-'+n);
+    if(el) el.style.display='block';
+    showScreen('screen-act');
+    startSecTimer(n,300);
+    if(n===1) initSec1();
+    else if(n===2) initSec2();
+    else if(n===3) initSec3();
+    else if(n===4) initSec4();
+    else if(n===5) initSec5();
+}
+
+/* ══════════════════════════════
+   SEC 1 — DROPDOWN
+══════════════════════════════ */
+function initSec1(){
+    const c=document.getElementById('cont1'); c.innerHTML='';
+    D1.forEach((it,idx)=>{
+        const row=document.createElement('div'); row.className='def-row';
+        const ops=[...it.ops].sort(()=>Math.random()-.5);
+        row.innerHTML=`<span>${idx+1}. ${it.q}</span>
+        <select class="def-sel" id="d1-${idx}">
+            <option value="">— Elegir —</option>
+            ${ops.map(o=>`<option value="${o}">${o}</option>`).join('')}
+        </select>`;
+        c.appendChild(row);
+    });
+}
+function checkSec1(){
+    let ok=0;
+    D1.forEach((it,idx)=>{
+        const sel=document.getElementById('d1-'+idx);
+        sel.classList.remove('ok','err');
+        if(sel.value===it.a){ sel.classList.add('ok'); ok++; }
+        else sel.classList.add('err');
+    });
+    showFb(1,ok/D1.length,ok+'/'+D1.length+' correctas');
+}
+
+/* ══════════════════════════════
+   SEC 2 — MATCH
+══════════════════════════════ */
+let matchSel2=null, matchOk2=0, matchDone2=[];
+function initSec2(){
+    matchSel2=null; matchOk2=0; matchDone2=[];
+    const left=document.getElementById('m-left'); left.innerHTML='';
+    const right=document.getElementById('m-right'); right.innerHTML='';
+    const shuffledR=[...D2].sort(()=>Math.random()-.5);
+    D2.forEach((it,i)=>{
+        const bl=document.createElement('button'); bl.className='match-btn'; bl.textContent=it.l;
+        bl.dataset.side='left'; bl.dataset.idx=i;
+        bl.onclick=()=>matchClick(bl,i,'left');
+        left.appendChild(bl);
+    });
+    shuffledR.forEach((it)=>{
+        const br=document.createElement('button'); br.className='match-btn'; br.textContent=it.r;
+        br.dataset.side='right'; br.dataset.idx=it.p;
+        br.onclick=()=>matchClick(br,it.p,'right');
+        right.appendChild(br);
+    });
+}
+function matchClick(btn,idx,side){
+    if(btn.classList.contains('solved')) return;
+    if(!matchSel2){
+        document.querySelectorAll('.match-btn.sel').forEach(b=>b.classList.remove('sel'));
+        btn.classList.add('sel'); matchSel2={btn,idx,side}; return;
+    }
+    if(matchSel2.side===side){
+        document.querySelectorAll('.match-btn.sel').forEach(b=>b.classList.remove('sel'));
+        btn.classList.add('sel'); matchSel2={btn,idx,side}; return;
+    }
+    if(matchSel2.idx===idx){
+        matchSel2.btn.classList.remove('sel'); matchSel2.btn.classList.add('solved');
+        btn.classList.remove('sel'); btn.classList.add('solved');
+        matchOk2++; matchSel2=null;
+        if(matchOk2===D2.length){ showFb(2,1,'¡Todos los pares correctos!'); }
+    } else {
+        matchSel2.btn.classList.remove('sel'); matchSel2.btn.classList.add('wrong');
+        btn.classList.add('wrong');
+        setTimeout(()=>{ matchSel2.btn.classList.remove('wrong'); btn.classList.remove('wrong'); matchSel2=null; },600);
+    }
+}
+function checkSec2(){
+    const pct=matchOk2/D2.length;
+    showFb(2,pct,matchOk2+'/'+D2.length+' pares correctos');
+}
+
+/* ══════════════════════════════
+   SEC 3 — V/F
+══════════════════════════════ */
+function initSec3(){
+    const c=document.getElementById('cont3'); c.innerHTML='';
+    D3.forEach((it,idx)=>{
+        const row=document.createElement('div'); row.className='vf-row';
+        row.innerHTML=`<span>${idx+1}. ${it.q}</span>
+        <div class="vf-btns">
+            <button class="vf-btn" id="vf-v-${idx}" onclick="selVF(${idx},'V',this)">V</button>
+            <button class="vf-btn" id="vf-f-${idx}" onclick="selVF(${idx},'F',this)">F</button>
+        </div>`;
+        c.appendChild(row);
+    });
+}
+function selVF(idx,val,btn){
+    const bv=document.getElementById('vf-v-'+idx);
+    const bf=document.getElementById('vf-f-'+idx);
+    bv.classList.remove('sel-v','sel-f'); bf.classList.remove('sel-v','sel-f');
+    bv.classList.remove('ok','err'); bf.classList.remove('ok','err');
+    btn.classList.add(val==='V'?'sel-v':'sel-f');
+    btn.dataset.chosen=val;
+    document.getElementById('vf-v-'+idx).dataset.chosen = val==='V'?'V':'';
+    document.getElementById('vf-f-'+idx).dataset.chosen = val==='F'?'F':'';
+}
+function checkSec3(){
+    let ok=0;
+    D3.forEach((it,idx)=>{
+        const bv=document.getElementById('vf-v-'+idx);
+        const bf=document.getElementById('vf-f-'+idx);
+        const chosen = bv.dataset.chosen==='V'?'V': bf.dataset.chosen==='F'?'F':'';
+        const correct = it.r?'V':'F';
+        bv.classList.remove('ok','err','sel-v','sel-f');
+        bf.classList.remove('ok','err','sel-v','sel-f');
+        if(chosen===correct){ ok++;
+            if(correct==='V') bv.classList.add('ok'); else bf.classList.add('ok');
+        } else {
+            if(chosen==='V') bv.classList.add('err'); else if(chosen==='F') bf.classList.add('err');
+            if(correct==='V') bv.classList.add('ok'); else bf.classList.add('ok');
+        }
+    });
+    showFb(3,ok/D3.length,ok+'/'+D3.length+' correctas');
+}
+
+/* ══════════════════════════════
+   SEC 4 — BANCO DE PALABRAS
+══════════════════════════════ */
+function initSec4(){
+    const bank=document.getElementById('bank4'); bank.innerHTML=''; selWord=null;
+    [...BANK4].sort(()=>Math.random()-.5).forEach(w=>{
+        const b=document.createElement('div'); b.className='bank-word'; b.textContent=w; b.id='bw-'+w;
+        b.onclick=()=>selBank(b,w); bank.appendChild(b);
+    });
+    const c=document.getElementById('cont4'); c.innerHTML='';
+    D4.forEach((it,idx)=>{
+        const parts=it.txt.split('___');
+        const row=document.createElement('div'); row.className='blank-row';
+        row.innerHTML=`${idx+1}. ${parts[0]}<span class="blank-inp" id="bl${idx}" onclick="fillBlank(${idx})">___</span>${parts[1]||''}`;
+        c.appendChild(row);
+    });
+}
+function selBank(btn,w){
+    document.querySelectorAll('.bank-word').forEach(b=>b.classList.remove('sel'));
+    if(selWord===w){ selWord=null; return; }
+    selWord=w; btn.classList.add('sel');
+}
+function fillBlank(idx){
+    if(!selWord) return;
+    const sp=document.getElementById('bl'+idx);
+    const prev=sp.dataset.val;
+    if(prev){ const pb=document.getElementById('bw-'+prev); if(pb)pb.classList.remove('used'); }
+    sp.textContent=selWord; sp.dataset.val=selWord; sp.classList.add('filled'); sp.classList.remove('ok','err');
+    const ub=document.getElementById('bw-'+selWord); if(ub)ub.classList.add('used');
+    selWord=null; document.querySelectorAll('.bank-word').forEach(b=>b.classList.remove('sel'));
+}
+function checkSec4(){
+    let ok=0;
+    D4.forEach((it,idx)=>{
+        const sp=document.getElementById('bl'+idx);
+        if((sp.dataset.val||'').toLowerCase()===it.ans.toLowerCase()){ sp.classList.add('ok'); ok++; }
+        else sp.classList.add('err');
+    });
+    showFb(4,ok/D4.length,ok+'/'+D4.length+' correctas');
+}
+
+/* ══════════════════════════════
+   SEC 5 — TABLA
+══════════════════════════════ */
+function initSec5(){
+    const tbody=document.getElementById('tbody5'); tbody.innerHTML='';
+    T5.forEach((row,idx)=>{
+        const saldo=row.ing-row.egr;
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td style="font-weight:700;">${row.suc}</td>
+            <td style="text-align:right;">${row.ing.toLocaleString()}</td>
+            <td style="text-align:right;">${row.egr.toLocaleString()}</td>
+            <td><input type="number" class="tbl-inp" id="ts-${idx}" placeholder="?"></td>`;
+        tr.dataset.saldo=saldo;
+        tbody.appendChild(tr);
+    });
+}
+function checkSec5(){
+    let ok=0;
+    T5.forEach((row,idx)=>{
+        const saldo=row.ing-row.egr;
+        const ts=document.getElementById('ts-'+idx);
+        ts.classList.remove('ok','err');
+        if(parseInt(ts.value)===saldo){ ts.classList.add('ok'); ok++; } else ts.classList.add('err');
+    });
+    showFb(5,ok/T5.length,ok+'/'+T5.length+' correctas');
+}
+
+/* ══════════════════════════════
+   UPLOAD
+══════════════════════════════ */
+function goUpload(){
+    clearInterval(sInt);
+    document.getElementById('hud-sec').textContent='--:--';
+    showScreen('screen-upload');
+}
+function handleUpload(input){
+    if(!input.files||!input.files[0]) return;
+    uploadedFile=input.files[0];
+    const zone=document.getElementById('upload-zone');
+    zone.classList.add('uploaded');
+    document.getElementById('upload-status').style.display='block';
+    document.getElementById('upload-status').innerHTML=`✅ Archivo cargado: <b>${uploadedFile.name}</b>`;
+    const btn=document.getElementById('btn-go-test');
+    btn.style.background=''; btn.style.pointerEvents='';
+}
+
+/* ══════════════════════════════
+   TEST FINAL
+══════════════════════════════ */
+function goTest(){
+    if(!uploadedFile){ alert('⚠️ Debes subir tu archivo de Excel antes de continuar.'); return; }
+    clearInterval(sInt);
+    document.getElementById('hud-sec').textContent='--:--';
+    showScreen('screen-test');
+    quizPool=[...BANK_Q].sort(()=>Math.random()-.5).slice(0,10);
+    qIdx=0; qScore=0;
+    renderQ();
+    let t=600;
+    const td=document.getElementById('test-timer');
+    testInt=setInterval(()=>{
+        t--; const m=Math.floor(t/60),s=t%60; td.textContent=m+':'+(s<10?'0'+s:s);
+        if(t<=30) td.className='tbadge danger';
+        else if(t<=120) td.className='tbadge warn';
+        if(t<=0) finishTest();
+    },1000);
+}
+function renderQ(){
+    if(qIdx>=10){ finishTest(); return; }
+    const q=quizPool[qIdx];
+    document.getElementById('qcount').textContent='Pregunta '+(qIdx+1)+'/10';
+    document.getElementById('qbar').style.width=(((qIdx+1)/10)*100)+'%';
+    const opts=[q.a,...q.o].sort(()=>Math.random()-.5);
+    document.getElementById('quiz-box').innerHTML=
+        `<p style="font-weight:800;color:var(--secondary);margin-bottom:14px;font-size:1rem;">${q.q}</p>`+
+        opts.map(op=>`<label class="q-opt"><input type="radio" name="qq" value="${op===q.a?'1':'0'}"> ${op}</label>`).join('');
+}
+function nextQ(){
+    const s=document.querySelector('input[name="qq"]:checked');
+    if(!s){ alert('Selecciona una respuesta.'); return; }
+    if(s.value==='1') qScore++;
+    qIdx++; renderQ();
+}
+// ─── FIREBASE ─────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAUvMWFnuaNXmyh7rjvLPNgjtiS0qQWYGM",
+  authDomain: "tecnico-pro.firebaseapp.com",
+  projectId: "tecnico-pro",
+  storageBucket: "tecnico-pro.firebasestorage.app",
+  messagingSenderId: "883534120062",
+  appId: "1:883534120062:web:72b5343763fd1d3582442f"
+};
+firebase.initializeApp(firebaseConfig);
+const fbDB = firebase.firestore();
+
+function guardarNotaFirebase(nota){
+  const fecha = new Date().toISOString();
+  const detalle = {
+    s1: scores[1]??0, s2: scores[2]??0, s3: scores[3]??0,
+    s4: scores[4]??0, s5: scores[5]??0, examen: testPts
+  };
+  const docId = user.trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+
+  // 1) Guardar en matilde-notas (panel docente Matilde)
+  fbDB.collection('matilde-notas').doc(docId).set({
+    nombre: user.trim(),
+    institucion: 'Matilde Esther',
+    modulo: 'Unidad 1 Excel',
+    nota: parseFloat(nota.toFixed(2)),
+    detalle, fecha,
+    archivoSubido: uploadedFile ? uploadedFile.name : null
+  }).then(()=>console.log('Nota guardada en matilde-notas'))
+    .catch(e=>console.warn('FB matilde-notas error:',e));
+
+  // 2) Actualizar registro en matilde-estudiantes
+  fbDB.collection('matilde-estudiantes').doc(docId).set({
+    nombre: user.trim(),
+    institucion: 'Matilde Esther',
+    sede: 'Matilde Esther',
+    registradoEn: fecha
+  }, {merge: true});
+
+  // 3) Guardar N1 de Excel en william-academico (para que aparezca en Calificaciones)
+  // Busca en DB.estudiantes por nombre similar y en DB.modulos por nombre que contenga
+  // "MATILDE" y asignatura "EXCEL". Hace un merge del calificaciones object.
+  fbDB.collection('william-academico').doc('datos').get().then(snap=>{
+    if(!snap.exists) return;
+    const data = snap.data();
+    const db = data.db;
+    if(!db) return;
+
+    // Normalizar para comparar
+    const norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+    const userNorm = norm(user);
+
+    // Buscar estudiante por nombre
+    const est = (db.estudiantes||[]).find(e=>{
+      const full1 = norm(`${e.nombres} ${e.apellidos}`);
+      const full2 = norm(`${e.apellidos} ${e.nombres}`);
+      // coincidencia exacta o parcial (al menos 2 palabras)
+      if(full1===userNorm || full2===userNorm) return true;
+      const palabrasUser = userNorm.split(' ').filter(p=>p.length>2);
+      const palabrasEst = norm(`${e.nombres} ${e.apellidos}`).split(' ');
+      return palabrasUser.filter(p=>palabrasEst.includes(p)).length >= 2;
+    });
+    if(!est){ console.log('Estudiante no encontrado en william-academico:',user); return; }
+
+    // Buscar módulo que contenga "MATILDE" en nombre
+    const mod = (db.modulos||[]).find(m=>norm(m.nombre).includes('matilde'));
+    if(!mod){ console.log('Módulo Matilde no encontrado'); return; }
+
+    // Buscar índice de asignatura "EXCEL"
+    const asigIdx = (mod.asignaturas||[]).findIndex(a=>norm(a.nombre).includes('excel'));
+    if(asigIdx<0){ console.log('Asignatura Excel no encontrada en módulo'); return; }
+
+    // Clave para N1: estId|modId|asigIdx|u|1
+    const key = `${est.id}|${mod.id}|${asigIdx}|u|1`;
+    const calificaciones = db.calificaciones || {};
+    calificaciones[key] = parseFloat(nota.toFixed(2));
+
+    // Guardar de vuelta
+    fbDB.collection('william-academico').doc('datos').update({
+      [`db.calificaciones.${key}`]: parseFloat(nota.toFixed(2)),
+      updated: new Date().toISOString()
+    }).then(()=>console.log('N1 Excel guardado en william-academico, key:',key))
+      .catch(e=>{
+        // Si update falla (campo anidado), intentar set merge
+        console.warn('Update falló, intentando set merge:',e);
+        db.calificaciones = calificaciones;
+        fbDB.collection('william-academico').doc('datos').set({db, updated:new Date().toISOString()},{merge:true})
+          .then(()=>console.log('N1 Excel guardado (set merge)'))
+          .catch(e2=>console.warn('FB set merge error:',e2));
+      });
+  }).catch(e=>console.warn('FB william-academico get error:',e));
+}
+
+function finishTest(){
+  clearInterval(testInt);
+  testPts = qScore * 0.5;
+  setPill(null, testPts.toFixed(1), 'pt');
+  updateNota();
+  const nota = calcNota();
+  guardarNotaFirebase(nota);
+  showResult();
+}
+
+function showResult(){
+  showScreen('screen-result');
+  document.getElementById('r-name').textContent = user;
+}
+
+function descargar(){
+  // Deshabilitado — la nota va directo al panel del profesor
+}
+</script>
+</body>
+</html>
