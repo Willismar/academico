@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unidad 2 Excel — Empleados | FEDECOMPU</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- FIREBASE -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --primary:#1565c0; --secondary:#0d47a1; --accent:#ff8f00;
+            --danger:#d32f2f; --dark:#2c3e50; --glass:rgba(255,255,255,0.98);
+            --green:#2e7d32;
+        }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#e3f2fd 0%,#bbdefb 100%);min-height:100vh;color:#333;padding-bottom:80px;}
+        .main-container{max-width:1000px;margin:0 auto;padding:90px 20px 40px;}
+
+        /* HUD — sin puntaje */
+        #hud{position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(13,71,161,0.97);color:white;
+            display:none;align-items:center;justify-content:space-between;padding:8px 24px;gap:10px;flex-wrap:wrap;
+            box-shadow:0 4px 20px rgba(0,0,0,0.4);border-bottom:3px solid var(--accent);}
+        .hud-item{display:flex;flex-direction:column;align-items:center;}
+        .hud-label{font-size:.55em;opacity:.65;text-transform:uppercase;letter-spacing:1px;}
+        .hud-val{font-size:1.05em;font-weight:800;}
+        #hud-global{color:#ffeb3b;font-size:1.5em!important;}
+        #hud-global.urgente{color:#ff4757!important;animation:blink .5s infinite alternate;}
+        #hud-sec.urgente{color:#ff4757!important;animation:blink .5s infinite alternate;}
+        @keyframes blink{from{opacity:1}to{opacity:.35}}
+
+        /* OVERLAY */
+        #overlay-block{display:none;position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.95);color:white;
+            flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;}
+        #overlay-block.show{display:flex;}
+
+        /* HEADER */
+        .header-box{background:linear-gradient(to right,var(--secondary),var(--primary));color:white;
+            padding:28px 30px;border-radius:20px;box-shadow:0 10px 30px rgba(21,101,192,.4);text-align:center;margin-bottom:22px;}
+        .header-box h1{font-weight:800;font-size:1.6em;}
+        .header-box p{opacity:.85;margin-top:4px;}
+
+        /* SCREENS */
+        .screen{display:none;}
+        .screen.active{display:block;animation:fadeIn .4s ease;}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+        /* CARDS */
+        .card{background:var(--glass);border-radius:20px;padding:30px;box-shadow:0 8px 25px rgba(0,0,0,.1);
+            border-left:6px solid var(--primary);margin-bottom:22px;}
+        .card h3{color:var(--secondary);margin-bottom:14px;font-weight:800;font-size:1.3em;
+            border-bottom:2px solid #e3f2fd;padding-bottom:8px;
+            display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+
+        /* LOGIN */
+        #screen-login{max-width:580px;margin:60px auto;}
+        .login-box{background:white;padding:38px;border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.12);text-align:center;}
+        .login-input{width:100%;padding:13px;border-radius:10px;border:2px solid #ddd;margin-bottom:18px;
+            font-size:.95rem;font-family:'Poppins',sans-serif;background:#f9f9f9;text-align:center;}
+        .login-input:focus{outline:none;border-color:var(--primary);background:#fff;}
+
+        /* BUTTONS */
+        .btn{background:var(--primary);color:white;border:none;padding:13px 28px;border-radius:50px;
+            font-weight:800;cursor:pointer;transition:.2s;font-family:'Poppins',sans-serif;font-size:.93rem;
+            box-shadow:0 5px 15px rgba(21,101,192,.3);}
+        .btn:hover{transform:scale(1.02);background:var(--secondary);}
+        .btn-accent{background:var(--accent);box-shadow:0 5px 15px rgba(255,143,0,.3);}
+        .btn-accent:hover{background:#e65100;}
+        .btn-block{width:100%;display:block;margin-top:14px;}
+        .btn-next{background:var(--accent);display:none;}
+        .btn-verify{background:#1565c0;}
+
+        /* TIMER BADGE */
+        .tbadge{background:var(--dark);color:#ffeb3b;padding:4px 14px;border-radius:20px;
+            font-family:monospace;font-size:1rem;border:2px solid #ffeb3b;display:inline-block;}
+        .tbadge.warn{border-color:#ff8f00;color:#ff8f00;}
+        .tbadge.danger{border-color:#ff4757;color:#ff4757;animation:blink .5s infinite alternate;}
+
+        /* FEEDBACK */
+        .feedback{display:none;margin-top:14px;padding:12px 16px;border-radius:10px;text-align:center;font-weight:700;font-size:.95rem;}
+
+        /* SEC 1: DROPDOWN */
+        .def-row{background:#e3f2fd;border:1px solid #90caf9;border-radius:10px;padding:12px 16px;
+            margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+        .def-row span{font-size:.87rem;font-weight:600;flex:1;min-width:200px;color:var(--dark);}
+        .def-sel{padding:8px 10px;border-radius:8px;border:1.5px solid #aaa;font-size:.85rem;
+            min-width:165px;font-family:'Poppins',sans-serif;}
+        .def-sel.ok{border-color:var(--primary);background:#e3f2fd;}
+        .def-sel.err{border-color:var(--danger);background:#ffebee;}
+
+        /* SEC 2: MATCH */
+        .match-wrap{display:flex;gap:24px;}
+        .match-col{flex:1;}
+        .match-btn{background:white;border:2px solid #90caf9;padding:11px 14px;border-radius:10px;
+            cursor:pointer;text-align:center;font-size:.84rem;font-weight:600;transition:.2s;
+            font-family:'Poppins',sans-serif;margin-bottom:8px;display:block;width:100%;}
+        .match-btn:hover{background:#e3f2fd;border-color:var(--primary);}
+        .match-btn.sel{background:var(--primary);color:white;border-color:var(--secondary);}
+        .match-btn.solved{background:#bbdefb;border-color:var(--primary);color:var(--secondary);cursor:default;pointer-events:none;}
+        .match-btn.wrong{background:#ffebee;border-color:var(--danger);animation:shake .35s;}
+        @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+        /* SEC 3: V/F */
+        .vf-row{background:#e3f2fd;border:1px solid #90caf9;border-radius:10px;padding:11px 14px;
+            margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+        .vf-row span{font-size:.87rem;flex:1;min-width:200px;}
+        .vf-btns{display:flex;gap:8px;}
+        .vf-btn{padding:7px 16px;border:2px solid #ccc;border-radius:8px;cursor:pointer;
+            font-weight:800;font-size:.82rem;font-family:'Poppins',sans-serif;background:white;transition:.2s;}
+        .vf-btn:hover{background:#e3f2fd;border-color:var(--primary);}
+        .vf-btn.sel-v{background:#1565c0;color:white;border-color:#0d47a1;}
+        .vf-btn.sel-f{background:var(--danger);color:white;border-color:#b71c1c;}
+        .vf-btn.ok{background:var(--primary)!important;color:white!important;border-color:var(--secondary)!important;}
+        .vf-btn.err{background:var(--danger)!important;color:white!important;border-color:#b71c1c!important;}
+
+        /* SEC 4: CRUCIGRAMA */
+        .cw-wrap{overflow-x:auto;margin:14px 0;text-align:center;}
+        .cw-table{border-collapse:collapse;display:inline-table;}
+        .cw-td{width:36px;height:36px;padding:0;position:relative;box-sizing:border-box;}
+        .cw-td.blocked{background:#2c3e50;border:2px solid #1a252f;}
+        .cw-td.open{background:white;border:2px solid #90caf9;}
+        .cw-numspan{position:absolute;top:1px;left:2px;font-size:9px;font-weight:900;
+            color:#1565c0;line-height:1;pointer-events:none;z-index:2;}
+        .cw-inp{position:absolute;top:0;left:0;width:100%;height:100%;border:none;
+            background:transparent;text-align:center;font-size:.95rem;font-weight:900;
+            text-transform:uppercase;outline:none;color:#2c3e50;
+            font-family:'Poppins',sans-serif;cursor:text;padding:0;box-sizing:border-box;}
+        .cw-inp.ok{background:#c8e6c9;color:#1b5e20;}
+        .cw-inp.err{background:#ffebee;color:#b71c1c;}
+        .cw-clues{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;}
+        .cw-clues h4{color:var(--secondary);font-weight:800;margin-bottom:8px;font-size:.92rem;
+            border-bottom:2px solid #e3f2fd;padding-bottom:4px;}
+        .cw-clue-item{font-size:.82rem;margin-bottom:6px;color:#444;line-height:1.4;}
+        .cw-clue-item b{color:var(--primary);}
+
+        /* SEC 5: SOPA DE LETRAS */
+        .ws-wrap{overflow-x:auto;margin:14px 0;text-align:center;}
+        .ws-table{border-collapse:collapse;display:inline-table;}
+        .ws-td{width:30px;height:30px;text-align:center;vertical-align:middle;
+            font-size:.85rem;font-weight:800;cursor:pointer;border:1px solid #dce8ff;
+            color:var(--dark);background:white;font-family:'Poppins',sans-serif;
+            -webkit-user-select:none;user-select:none;}
+        .ws-td.sel{background:#fff9c4;color:#e67e22;}
+        .ws-td.found{background:#c8e6c9!important;color:#1b5e20!important;}
+        .ws-words{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}
+        .ws-word-chip{padding:5px 14px;background:white;border:2px solid #90caf9;
+            border-radius:20px;font-size:.8rem;font-weight:700;color:var(--secondary);}
+        .ws-word-chip.found{background:#c8e6c9;border-color:#2e7d32;color:#1b5e20;text-decoration:line-through;}
+
+        /* QUIZ */
+        .q-box{background:white;padding:26px;border-radius:12px;border:1px solid #e3f2fd;box-shadow:0 4px 15px rgba(0,0,0,.06);}
+        .q-opt{display:block;padding:12px 16px;border:2px solid #eee;margin:9px 0;border-radius:10px;
+            cursor:pointer;font-size:.97rem;transition:.2s;background:white;}
+        .q-opt:hover{background:#e3f2fd;border-color:var(--primary);}
+        .q-opt input{margin-right:12px;transform:scale(1.2);}
+        .qbar-wrap{height:8px;background:#eee;border-radius:10px;margin:10px 0;}
+        .qbar{height:8px;background:linear-gradient(to right,var(--primary),var(--accent));border-radius:10px;transition:width .4s;}
+
+        /* UPLOAD */
+        .upload-zone{border:3px dashed #90caf9;border-radius:16px;padding:30px;text-align:center;
+            background:#f0f7ff;cursor:pointer;transition:.2s;}
+        .upload-zone:hover{border-color:var(--primary);background:#e3f2fd;}
+        .upload-zone.uploaded{border-color:#2e7d32;background:#e8f5e9;border-style:solid;}
+        #file-input{display:none;}
+
+        /* RESULTS — sin nota visible */
+        .res-done{background:white;border-radius:20px;padding:50px 30px;text-align:center;box-shadow:0 8px 25px rgba(0,0,0,.1);}
+
+        @media(max-width:600px){.match-wrap{flex-direction:column;}.cw-clues{grid-template-columns:1fr;}}
+    </style>
+</head>
+<body>
+
+<div id="overlay-block">
+    <div style="font-size:5rem;">⏰</div>
+    <h1 style="font-size:2.2rem;margin:14px 0;">¡TIEMPO AGOTADO!</h1>
+    <p style="opacity:.8;max-width:420px;font-size:1.05em;">Los 35 minutos han terminado.<br>El sistema fue bloqueado automáticamente.</p>
+    <p style="margin-top:8px;font-size:.87em;opacity:.6;">Muestra esta pantalla a tu profesor.</p>
+</div>
+
+<!-- HUD: solo tiempo y nombre, sin puntaje -->
+<div id="hud">
+    <div class="hud-item"><span class="hud-label">⏰ Tiempo total</span><span class="hud-val" id="hud-global">35:00</span></div>
+    <div class="hud-item"><span class="hud-label">⏱ Sección</span><span class="hud-val" id="hud-sec" style="color:var(--accent);">--:--</span></div>
+    <div class="hud-item"><span class="hud-label">👤 Estudiante</span><span class="hud-val" id="hud-user" style="font-size:.76em;">—</span></div>
+</div>
+
+<!-- LOGIN — solo nombre y botón iniciar -->
+<div id="screen-login" class="screen active">
+<div class="main-container" style="max-width:520px;margin:60px auto;padding-top:0;">
+    <div class="header-box">
+        <div style="font-size:2.8rem;">📊</div>
+        <h1>UNIDAD 2 — EXCEL</h1>
+        <p>Hoja EMPLEADOS | FEDECOMPU</p>
+    </div>
+    <div class="login-box">
+        <h3 style="color:var(--secondary);margin-bottom:6px;">PRUEBA — UNIDAD 2</h3>
+        <p style="color:#666;font-size:.88rem;margin-bottom:16px;">Profesor: Ing. William Proaño Martínez</p>
+        <div style="background:#fff8e1;border-radius:10px;padding:10px 14px;margin-bottom:20px;font-size:.82em;color:#5d4037;">
+            ⚠️ <b>Atención:</b> Tienes <b>35 minutos</b> en total — 5 secciones × 5 min + 10 min Test.<br>
+            <b style="color:var(--danger);">Solo se permite UN intento.</b>
+        </div>
+
+        <!-- select oculto solo para compatibilidad con doLogin() -->
+        <select id="student-select" style="display:none;"></select>
+
+        <!-- Nombre del estudiante desde el sistema -->
+        <div id="bloque-nombre-confirmado" style="margin-bottom:20px;display:none;">
+            <div style="background:#e8f4fd;border:2px solid #0ea5e9;border-radius:12px;padding:16px 18px;text-align:center;">
+                <p style="margin:0 0 6px;font-size:.85rem;color:#555;">👤 <b>Estudiante identificado:</b></p>
+                <p id="nombre-confirmado-texto" style="margin:0;font-size:1.1rem;font-weight:800;color:#1450a3;text-transform:uppercase;letter-spacing:.5px;"></p>
+            </div>
+        </div>
+
+        <div id="login-err" style="color:var(--danger);font-size:.85rem;margin-bottom:12px;display:none;"></div>
+        <div id="login-checking" style="color:#555;font-size:.85rem;margin-bottom:12px;display:none;">⏳ Verificando...</div>
+
+        <button class="btn btn-block" id="btn-ingresar" onclick="doLogin()"
+            style="background:#aaa;pointer-events:none;cursor:not-allowed;" disabled>
+            🚀 INICIAR LA PRUEBA
+        </button>
+        
+    </div>
+</div>
+</div>
+
+<!-- ACTIVIDADES -->
+<div id="screen-act" class="screen">
+<div class="main-container">
+    <div class="header-box">
+        <h1>📝 Actividades — Unidad 2 Excel</h1>
+        <p>Estudiante: <span id="user-disp"></span></p>
+    </div>
+
+    <!-- SEC 1 -->
+    <div id="sec-1" class="activity" style="display:none;">
+        <div class="card">
+            <h3>🔤 Sección 1 — Seleccionar la respuesta correcta <span id="tb1" class="tbadge">05:00</span></h3>
+            <p style="font-size:.86rem;color:#555;margin-bottom:14px;">Elige la opción correcta para cada enunciado sobre la Unidad 2.</p>
+            <div id="cont1"></div>
+            <div class="feedback" id="msg1"></div>
+            <button class="btn btn-verify btn-block" style="max-width:220px;margin-top:10px;" onclick="checkSec1()">✔ Verificar</button>
+            <button id="nx1" class="btn btn-next btn-block" style="max-width:220px;" onclick="goSec(2)">Siguiente ➡️</button>
+        </div>
+    </div>
+
+    <!-- SEC 2 -->
+    <div id="sec-2" class="activity" style="display:none;">
+        <div class="card">
+            <h3>🔗 Sección 2 — Relacionar Conceptos <span id="tb2" class="tbadge">05:00</span></h3>
+            <p style="font-size:.86rem;color:#555;margin-bottom:14px;">Haz clic en un elemento de la izquierda y luego en su par correcto de la derecha.</p>
+            <div class="match-wrap"><div class="match-col" id="m-left"></div><div class="match-col" id="m-right"></div></div>
+            <div class="feedback" id="msg2"></div>
+            <button class="btn btn-verify btn-block" style="max-width:220px;margin-top:10px;" onclick="checkSec2()">✔ Verificar</button>
+            <button id="nx2" class="btn btn-next btn-block" style="max-width:220px;" onclick="goSec(3)">Siguiente ➡️</button>
+        </div>
+    </div>
+
+    <!-- SEC 3 -->
+    <div id="sec-3" class="activity" style="display:none;">
+        <div class="card">
+            <h3>✅ Sección 3 — Verdadero o Falso <span id="tb3" class="tbadge">05:00</span></h3>
+            <p style="font-size:.86rem;color:#555;margin-bottom:14px;">Determina si cada afirmación es Verdadera (V) o Falsa (F).</p>
+            <div id="cont3"></div>
+            <div class="feedback" id="msg3"></div>
+            <button class="btn btn-verify btn-block" style="max-width:220px;margin-top:10px;" onclick="checkSec3()">✔ Verificar</button>
+            <button id="nx3" class="btn btn-next btn-block" style="max-width:220px;" onclick="goSec(4)">Siguiente ➡️</button>
+        </div>
+    </div>
+
+    <!-- SEC 4 -->
+    <div id="sec-4" class="activity" style="display:none;">
+        <div class="card">
+            <h3>🔠 Sección 4 — Crucigrama Excel <span id="tb4" class="tbadge">05:00</span></h3>
+            <p style="font-size:.86rem;color:#555;margin-bottom:10px;">Completa el crucigrama con las palabras clave de la Unidad 2.</p>
+            <div style="overflow-x:auto;text-align:center;margin:14px 0;"><div id="cw-container"></div></div>
+            <div class="cw-clues" id="cw-clues"></div>
+            <div class="feedback" id="msg4"></div>
+            <button class="btn btn-verify btn-block" style="max-width:220px;margin-top:10px;" onclick="checkCrucigrama()">✔ Verificar</button>
+            <button id="nx4" class="btn btn-next btn-block" style="max-width:220px;" onclick="goSec(5)">Siguiente ➡️</button>
+        </div>
+    </div>
+
+    <!-- SEC 5 -->
+    <div id="sec-5" class="activity" style="display:none;">
+        <div class="card">
+            <h3>🔍 Sección 5 — Sopa de Letras <span id="tb5" class="tbadge">05:00</span></h3>
+            <p style="font-size:.86rem;color:#555;margin-bottom:10px;">Encuentra las palabras ocultas relacionadas con la Unidad 2. Haz clic en la primera y última letra de cada palabra.</p>
+            <div class="ws-words" id="ws-words"></div>
+            <div style="overflow-x:auto;text-align:center;margin:14px 0;"><table class="ws-table" id="ws-table"></table></div>
+            <div style="margin-top:10px;font-size:.8rem;color:#888;">✅ Encontradas: <span id="ws-count">0</span> / <span id="ws-total">0</span></div>
+            <div class="feedback" id="msg5"></div>
+            <button class="btn btn-verify btn-block" style="max-width:220px;margin-top:10px;" onclick="checkSopa()">✔ Verificar</button>
+            <button id="nx5" class="btn btn-next btn-block" style="max-width:220px;" onclick="goUpload()">📎 Subir Archivo ➡️</button>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- UPLOAD -->
+<div id="screen-upload" class="screen">
+<div class="main-container" style="max-width:680px;">
+    <div class="header-box">
+        <div style="font-size:2.5rem;">📁</div>
+        <h1>SUBIR ARCHIVO DE PRÁCTICA</h1>
+        <p>Debes subir tu archivo antes de ir al Test</p>
+    </div>
+    <div class="card" style="text-align:center;">
+        <p style="color:#555;margin-bottom:20px;font-size:.93rem;">Sube el archivo <strong>PRACTICA 2 [tu nombre].xlsx</strong> que elaboraste en clase.</p>
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+            <div style="font-size:3rem;margin-bottom:10px;">📤</div>
+            <p style="font-weight:700;color:var(--secondary);font-size:1.1em;">Haz clic aquí para subir tu archivo</p>
+            <p style="color:#888;font-size:.85rem;margin-top:6px;">Formatos aceptados: .xlsx, .xls</p>
+            <div id="upload-status" style="margin-top:12px;display:none;font-weight:700;color:#2e7d32;font-size:1rem;"></div>
+        </div>
+        <input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleUpload(this)">
+        <button id="btn-go-test" class="btn btn-block" style="max-width:280px;margin:18px auto 0;" onclick="goTest()">
+            🎯 Ir al Test Unidad 2 Excel ➡️
+        </button>
+        <p id="upload-hint" style="font-size:.78rem;color:#999;margin-top:10px;">⏰ El tiempo sigue corriendo. Si no tienes el archivo, el test tendrá <b>5 minutos</b>.</p>
+    </div>
+</div>
+</div>
+
+<!-- TEST FINAL -->
+<div id="screen-test" class="screen">
+<div class="main-container">
+    <div class="card">
+        <span style="background:var(--danger);color:white;padding:4px 14px;border-radius:20px;font-size:.78em;font-weight:700;">🏆 TEST UNIDAD 2 EXCEL — 10 min — 5 puntos</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0;">
+            <span id="qcount" style="font-weight:800;color:var(--secondary);">Pregunta 1/10</span>
+            <span id="test-timer" class="tbadge">10:00</span>
+        </div>
+        <div class="qbar-wrap"><div class="qbar" id="qbar" style="width:10%"></div></div>
+        <div class="q-box" id="quiz-box"></div>
+        <button class="btn btn-accent btn-block" style="max-width:260px;margin-top:14px;" onclick="nextQ()">Siguiente Pregunta ➡️</button>
+    </div>
+</div>
+</div>
+
+<!-- RESULTADO — solo confirmación, sin nota -->
+<div id="screen-result" class="screen">
+<div class="main-container" style="max-width:600px;">
+    <div class="res-done">
+        <div style="font-size:4rem;margin-bottom:10px;">✅</div>
+        <h1 style="color:var(--secondary);margin-bottom:8px;">¡PRUEBA COMPLETADA!</h1>
+        <p style="color:#555;font-size:1rem;margin-top:6px;">Tu nota ha sido registrada automáticamente.</p>
+        <p style="font-size:.88rem;color:#777;margin-top:4px;">Consulta tus calificaciones con tu profesor.</p>
+        <p style="margin-top:14px;font-size:.82rem;color:#aaa;">FEDECOMPU — Ing. William Proaño Martínez</p>
+    </div>
+</div>
+</div>
+
+<script>
+/* ══ FIREBASE ══ */
+const firebaseConfig={
+    apiKey:"AIzaSyAUvMWFnuaNXmyh7rjvLPNgjtiS0qQWYGM",
+    authDomain:"tecnico-pro.firebaseapp.com",
+    projectId:"tecnico-pro",
+    storageBucket:"tecnico-pro.firebasestorage.app",
+    messagingSenderId:"883534120062",
+    appId:"1:883534120062:web:72b5343763fd1d3582442f"
+};
+firebase.initializeApp(firebaseConfig);
+const fbDB=firebase.firestore();
+
+/* ══ ESTADO ══ */
+let user="", globalSeg=35*60, gInt=null, sInt=null;
+let scores={1:null,2:null,3:null,4:null,5:null}, testPts=0, uploadPts=0;
+let matchSel2=null, matchOk2=0;
+let quizPool=[], qIdx=0, qScore=0, testInt=null;
+let uploadedFile=null;
+
+/* ══ DATOS SECCIONES (iguales que original) ══ */
+const D1=[
+    {q:"¿Cómo se denomina la hoja de trabajo en este ejercicio?",a:"EMPLEADOS",ops:["EMPLEADOS","TRABAJADORES","LIQUIDACION","PERSONAL"]},
+    {q:"¿En qué fuente va el título 'Empresa el Trébol S.A'?",a:"Comic Sans",ops:["Comic Sans","Courier","Arial","Times New Roman"]},
+    {q:"¿Qué tamaño y color tiene el título 'Empresa el Trébol S.A'?",a:"Tamaño 18, color rojo",ops:["Tamaño 18, color rojo","Tamaño 12, color azul","Tamaño 14, color negro","Tamaño 16, color verde"]},
+    {q:"¿Entre qué celdas se combina y centra el título?",a:"A1 hasta F1",ops:["A1 hasta F1","A1 hasta E1","A1 hasta G1","B1 hasta F1"]},
+    {q:"¿Qué fuente y tamaño tienen los títulos de las columnas?",a:"Courier, tamaño 12",ops:["Courier, tamaño 12","Comic Sans, tamaño 18","Arial, tamaño 14","Poppins, tamaño 10"]},
+    {q:"¿De qué color son los títulos de las columnas?",a:"Azul",ops:["Azul","Rojo","Verde","Negro"]},
+    {q:"¿Qué formato se aplica a la columna F_Nac?",a:"Formato Fecha (ej: 12-12-75)",ops:["Formato Fecha (ej: 12-12-75)","Formato Número","Formato Texto","Formato Moneda"]},
+    {q:"¿Qué características tiene el formato de la columna Sueldo?",a:"Separador de miles y 2 decimales",ops:["Separador de miles y 2 decimales","Sin decimales","3 decimales","Solo decimales"]},
+];
+const D2=[
+    {l:"Función SUMA",r:"Totalizar la columna Sueldo",p:0},
+    {l:"Función PROMEDIO",r:"Calcular el promedio de los Sueldos",p:1},
+    {l:"Fórmula =E3*5%",r:"Calcular el Premio de cada empleado",p:2},
+    {l:"Celda con fondo amarillo y texto rojo",r:"Total de la columna Sueldo",p:3},
+    {l:"Celda con fondo naranja",r:"Promedio de Sueldos redondeado a 1 decimal",p:4},
+    {l:"Fuente Comic Sans, tamaño 18, rojo",r:"Formato del título Empresa el Trébol S.A",p:5},
+    {l:"Fuente Courier, tamaño 12, azul",r:"Formato de los títulos de columnas",p:6},
+    {l:"Columnas intercaladas con relleno gris",r:"Fuente de color azul en esas columnas",p:7},
+];
+const D3=[
+    {q:"La hoja de trabajo se denomina EMPLEADOS.",r:true},
+    {q:"El título 'Empresa el Trébol S.A' usa fuente Arial tamaño 14.",r:false},
+    {q:"Los títulos de las columnas usan fuente Courier tamaño 12 de color azul.",r:true},
+    {q:"El formato Fecha se aplica a la columna Sueldo.",r:false},
+    {q:"La columna Sueldo tiene separador de miles y 2 decimales.",r:true},
+    {q:"La celda del Total de Sueldos tiene texto rojo y fondo amarillo.",r:true},
+    {q:"El promedio de Sueldos se redondea a 2 decimales.",r:false},
+    {q:"La columna Premio se calcula como el 10% del Sueldo.",r:false},
+    {q:"El título 'Empresa el Trébol S.A' se combina y centra entre A1 y F1.",r:true},
+    {q:"Las columnas intercaladas tienen relleno gris y fuente azul.",r:true},
+];
+const CW_WORDS=[
+    {word:"EMPLEADOS",r:0,c:0,dir:"H",num:1,clue:"Nombre de la hoja de trabajo"},
+    {word:"PROMEDIO",r:4,c:0,dir:"H",num:2,clue:"Función para el salario medio (1 decimal)"},
+    {word:"FORMATO",r:6,c:5,dir:"H",num:3,clue:"Configuración de celda: Fecha, Número, etc."},
+    {word:"PREMIO",r:8,c:0,dir:"H",num:4,clue:"5% del Sueldo de cada empleado"},
+    {word:"SUELDO",r:10,c:0,dir:"H",num:5,clue:"Columna con separador de miles y 2 decimales"},
+    {word:"COMBINAR",r:12,c:0,dir:"H",num:6,clue:"Unir celdas A1:F1 para el título"},
+    {word:"EMPRESA",r:0,c:4,dir:"V",num:7,clue:"___ el Trébol S.A — nombre del título"},
+    {word:"COURIER",r:3,c:7,dir:"V",num:8,clue:"Fuente de los títulos de columnas"},
+];
+const CW_ROWS=14, CW_COLS=12;
+const WS_WORDS=["EMPLEADOS","COURIER","FORMATO","SUELDO","PREMIO","PROMEDIO","FECHA","BORDES","COMBINAR","APELLIDO","SECCION","TREBOL","COMIC","CLAVE","ROJO"];
+const WS_SIZE=15;
+let wsMatrix=[], wsPlacedWords=[], wsFound=new Set(), wsFirstClick=null;
+const BANK_Q=[
+    {q:"¿Cómo se denomina la hoja de trabajo en la Unidad 2?",a:"EMPLEADOS",o:["LIQUIDACION","TRABAJADORES","PERSONAL"]},
+    {q:"¿En qué fuente va escrito el título 'Empresa el Trébol S.A'?",a:"Comic Sans",o:["Courier","Arial","Times New Roman"]},
+    {q:"¿Qué tamaño tiene la fuente del título 'Empresa el Trébol S.A'?",a:"18",o:["12","14","16"]},
+    {q:"¿De qué color es el texto del título 'Empresa el Trébol S.A'?",a:"Rojo",o:["Azul","Verde","Negro"]},
+    {q:"¿Entre qué celdas se combina y centra el título?",a:"A1 hasta F1",o:["A1 hasta E1","A1 hasta G1","B1 hasta F1"]},
+    {q:"¿Qué fuente se usa para los títulos de las columnas?",a:"Courier",o:["Comic Sans","Arial","Calibri"]},
+    {q:"¿Qué tamaño tiene la fuente de los títulos de las columnas?",a:"12",o:["10","14","18"]},
+    {q:"¿De qué color son los títulos de las columnas?",a:"Azul",o:["Rojo","Verde","Negro"]},
+    {q:"¿Qué formato se aplica a la columna F_Nac?",a:"Formato Fecha",o:["Formato Número","Formato Texto","Formato Moneda"]},
+    {q:"¿Qué formato tiene la columna Sueldo?",a:"Número con separador de miles y 2 decimales",o:["Número sin decimales","Moneda","Texto"]},
+    {q:"¿Qué color tiene el texto de la celda Total de Sueldos?",a:"Rojo",o:["Azul","Verde","Negro"]},
+    {q:"¿Qué color tiene el fondo de la celda Total de Sueldos?",a:"Amarillo",o:["Naranja","Rojo","Verde"]},
+    {q:"¿De qué color es el fondo de la celda del Promedio de Sueldos?",a:"Naranja",o:["Amarillo","Rojo","Azul"]},
+    {q:"¿A cuántos decimales se redondea el Promedio de Sueldos?",a:"2 decimales",o:["0 decimales","1 decimal","3 decimales"]},
+    {q:"¿Cómo se calcula la columna Premio?",a:"5% del Sueldo de cada empleado",o:["10% del Sueldo","5% del Total","3% del Sueldo"]},
+    {q:"¿Cuál es la fórmula del Premio para el primer empleado (E3)?",a:"=E3*5%",o:["=E3*10%","=E3*0.10","=E3/5"]},
+    {q:"¿Cuántos empleados tiene la planilla?",a:"16",o:["14","15","17"]},
+    {q:"¿Segun el ejercicio que se pide hacer con las columnas Nombre y Apellido?",a:"Cambiar el orden: primero Apellido, luego Nombre",o:["Eliminar la columna Nombre","Combinar Nombre y Apellido","Ordenar alfabéticamente"]},
+    {q:"¿Qué se aplica en las columnas de datos en forma intercalada?",a:"Relleno gris y fuente azul",o:["Relleno amarillo y fuente roja","Relleno verde y fuente negra","Bordes gruesos"]},
+    {q:"¿Qué función se usa para totalizar la columna Sueldo?",a:"SUMA",o:["PROMEDIO","MAX","CONTAR"]},
+    {q:"¿Cuál es el sueldo de Gomez Juan (primer empleado)?",a:"2500",o:["3600","4500","2600"]},
+    {q:"¿Cuál es el sueldo de Gimenez Leticia?",a:"9000",o:["7800","8500","7000"]},
+    {q:"¿Cuál es el sueldo de Gomez Fernanda?",a:"8500",o:["7800","9000","7000"]},
+    {q:"¿En qué sección trabaja Gomez Juan?",a:"Mkt",o:["Adm","Vta","Sys"]},
+    {q:"¿En qué sección trabaja Diaz Jose?",a:"Vta",o:["Mkt","Adm","Fin"]},
+    {q:"¿Cuánto gana Garcia Mariana?",a:"7000",o:["5000","8500","6000"]},
+    {q:"¿Cuál es el Premio (5%) de Gomez Juan con sueldo 2500?",a:"125",o:["250","25","150"]},
+    {q:"¿Cuál es el Premio (5%) de Gimenez Leticia con sueldo 9000?",a:"450",o:["900","90","45"]},
+    {q:"¿Qué acción se hace con el título en las celdas A1 a F1?",a:"Combinar y centrar",o:["Solo centrar","Combinar sin centrar","Insertar imagen"]},
+    {q:"¿Qué mejora de aspecto se aplica a toda la planilla según el ejercicio?",a:"Bordes y sombreado",o:["Solo bordes","Solo sombreado","Negrita en todo"]},
+    {q:"¿Qué formato especial tiene la fecha de nacimiento de empleados?",a:"dd-mm-aa (ej: 12-12-75)",o:["aaaa-mm-dd","mm/dd/aaaa","Solo el año"]},
+    {q:"¿Cómo se guarda el archivo al final?",a:"Con clave, como PRACTICA 2 + nombre, en carpeta Documentos",o:["Sin clave en el Escritorio","Con clave en Descargas","Sin nombre específico"]},
+];
+
+/* ══ UN SOLO INTENTO: verificar en Firebase ══ */
+function doLogin(){
+    const v=document.getElementById('student-select').value.trim();
+    if(!v){showLoginErr('Por favor selecciona tu nombre.');return;}
+    user=v;
+    const btn=document.getElementById('btn-ingresar');
+    btn.disabled=true; btn.textContent='⏳ Verificando...';
+    document.getElementById('login-checking').style.display='block';
+    document.getElementById('login-err').style.display='none';
+    const docId=user.replace(/\s+/g,'_').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').slice(0,40);
+    fbDB.collection('matilde-notas').doc(docId).get().then(snap=>{
+        document.getElementById('login-checking').style.display='none';
+        if(snap.exists){
+            showLoginErr('⛔ Ya has rendido esta prueba. Solo se permite un intento.');
+            btn.disabled=false; btn.textContent='🚀 INICIAR LA PRUEBA';
+            return;
+        }
+        // No hay registro: puede rendir
+        document.getElementById('hud-user').textContent=user;
+        document.getElementById('user-disp').textContent=user;
+        document.getElementById('hud').style.display='flex';
+        startGlobal();
+        showScreen('screen-act');
+        setTimeout(()=>goSec(1),100);
+    }).catch(()=>{
+        document.getElementById('login-checking').style.display='none';
+        // En caso de error de red dejar pasar
+        document.getElementById('hud-user').textContent=user;
+        document.getElementById('user-disp').textContent=user;
+        document.getElementById('hud').style.display='flex';
+        startGlobal();
+        showScreen('screen-act');
+        setTimeout(()=>goSec(1),100);
+    });
+}
+function showLoginErr(msg){
+    const el=document.getElementById('login-err');
+    el.textContent=msg; el.style.display='block';
+    document.getElementById('btn-ingresar').disabled=false;
+    document.getElementById('btn-ingresar').style.background='';
+    document.getElementById('btn-ingresar').style.pointerEvents='';
+    document.getElementById('btn-ingresar').style.cursor='pointer';
+    document.getElementById('btn-ingresar').textContent='🚀 INICIAR LA PRUEBA';
+}
+function checkLoginReady(){
+    const ok=!!(document.getElementById('student-select').value.trim());
+    const btn=document.getElementById('btn-ingresar');
+    btn.disabled=!ok;
+    btn.style.background=ok?'':'#aaa';
+    btn.style.pointerEvents=ok?'':'none';
+    btn.style.cursor=ok?'pointer':'not-allowed';
+}
+
+/* ══ TIMERS ══ */
+function startGlobal(){
+    gInt=setInterval(()=>{
+        globalSeg--;
+        const m=Math.floor(globalSeg/60),s=globalSeg%60;
+        const el=document.getElementById('hud-global');
+        el.textContent=m+':'+(s<10?'0'+s:s);
+        if(globalSeg<=120) el.classList.add('urgente');
+        if(globalSeg<=0) bloquear();
+    },1000);
+}
+function startSecTimer(n,seg){
+    clearInterval(sInt);
+    let t=seg;
+    const sh=document.getElementById('hud-sec');
+    const bd=document.getElementById('tb'+n);
+    sh.classList.remove('urgente');
+    if(bd) bd.className='tbadge';
+    sInt=setInterval(()=>{
+        t--;
+        const m=Math.floor(t/60),s=t%60;
+        const txt=m+':'+(s<10?'0'+s:s);
+        sh.textContent=txt;
+        if(bd) bd.textContent=txt;
+        if(t<=30){sh.classList.add('urgente');if(bd)bd.className='tbadge danger';}
+        else if(t<=120){if(bd)bd.className='tbadge warn';}
+        if(t<=0){clearInterval(sInt);autoNext(n);}
+    },1000);
+}
+function autoNext(n){
+    if(scores[n]===null){scores[n]=0;}
+    if(n<5) goSec(n+1); else goUpload();
+}
+function bloquear(){
+    clearInterval(gInt);clearInterval(sInt);
+    document.getElementById('overlay-block').classList.add('show');
+    guardarNota();
+}
+function calcNota(){let s=0;for(let i=1;i<=5;i++) if(scores[i]!==null)s+=scores[i];return Math.min(10, s+testPts+uploadPts);}
+function award(n,pct){const p=pct>=0.8?1:pct>=0.5?0.5:0;scores[n]=p;return p;}
+function showFb(n,pct,lbl){
+    const pts=award(n,pct);
+    const el=document.getElementById('msg'+n);
+    const nx=document.getElementById('nx'+n);
+    el.style.display='block';
+    if(pct>=0.8){el.textContent='✅ '+lbl+' — ¡Excelente!';el.style.background='#e3f2fd';el.style.color='#0d47a1';}
+    else if(pct>=0.5){el.textContent='⚠️ '+lbl+' — Bien, revisa los errores.';el.style.background='#fff9c4';el.style.color='#5d4037';}
+    else{el.textContent='❌ '+lbl+' — Repasa el material.';el.style.background='#ffebee';el.style.color='#b71c1c';}
+    if(nx) nx.style.display='block';
+}
+
+/* ══ CRUCIGRAMA ══ */
+function buildCWMap(){
+    const map={};
+    CW_WORDS.forEach(w=>{
+        for(let i=0;i<w.word.length;i++){
+            const r=w.dir==="H"?w.r:w.r+i;
+            const c=w.dir==="H"?w.c+i:w.c;
+            const k=r+","+c;
+            if(!map[k]) map[k]={letter:w.word[i],nums:[]};
+            if(i===0) map[k].nums.push(w.num);
+        }
+    });
+    return map;
+}
+function initCrucigrama(){
+    const cwMap=buildCWMap();
+    const tbl=document.createElement("table");
+    tbl.style.borderCollapse="collapse"; tbl.style.margin="0 auto";
+    for(let r=0;r<CW_ROWS;r++){
+        const tr=document.createElement("tr");
+        for(let c=0;c<CW_COLS;c++){
+            const td=document.createElement("td");
+            td.style.width="36px"; td.style.height="36px"; td.style.padding="0"; td.style.position="relative";
+            const k=r+","+c;
+            if(cwMap[k]){
+                td.style.background="white"; td.style.border="2px solid #90caf9";
+                if(cwMap[k].nums.length>0){
+                    const sp=document.createElement("span");
+                    sp.textContent=cwMap[k].nums[0];
+                    sp.style.cssText="position:absolute;top:1px;left:2px;font-size:9px;font-weight:900;color:#1565c0;line-height:1;pointer-events:none;z-index:2;";
+                    td.appendChild(sp);
+                }
+                const inp=document.createElement("input");
+                inp.type="text"; inp.maxLength=1; inp.id="cw-"+k;
+                inp.dataset.answer=cwMap[k].letter;
+                inp.setAttribute("autocomplete","off");
+                inp.style.cssText="position:absolute;top:0;left:0;width:100%;height:100%;border:none;background:transparent;text-align:center;font-size:.95rem;font-weight:900;text-transform:uppercase;outline:none;color:#2c3e50;font-family:Poppins,sans-serif;cursor:text;padding:0;box-sizing:border-box;";
+                inp.addEventListener("input",function(){
+                    if(this.value.length>1) this.value=this.value.slice(-1);
+                    this.value=this.value.toUpperCase();
+                    this.style.background=""; this.style.color="#2c3e50";
+                });
+                td.appendChild(inp);
+            } else {
+                td.style.background="#2c3e50"; td.style.border="2px solid #1a252f";
+            }
+            tr.appendChild(td);
+        }
+        tbl.appendChild(tr);
+    }
+    const cont=document.getElementById("cw-container");
+    cont.innerHTML=""; cont.appendChild(tbl);
+    let hH="<h4>➡️ HORIZONTAL</h4>", vH="<h4>⬇️ VERTICAL</h4>";
+    CW_WORDS.forEach(w=>{
+        const li=`<div class="cw-clue-item"><b>${w.num}.</b> ${w.clue}</div>`;
+        if(w.dir==="H") hH+=li; else vH+=li;
+    });
+    document.getElementById("cw-clues").innerHTML=`<div>${hH}</div><div>${vH}</div>`;
+}
+function checkCrucigrama(){
+    let ok=0,total=0;
+    document.querySelectorAll("[id^='cw-']").forEach(inp=>{
+        if(!inp.dataset.answer) return; total++;
+        inp.style.background="";
+        if((inp.value||"").toUpperCase()===(inp.dataset.answer||"").toUpperCase()){
+            inp.style.background="#c8e6c9"; inp.style.color="#1b5e20"; ok++;
+        } else {inp.style.background="#ffebee"; inp.style.color="#b71c1c";}
+    });
+    showFb(4,ok/total,ok+"/"+total+" letras correctas");
+}
+
+/* ══ SOPA DE LETRAS ══ */
+function buildSopa(){
+    wsMatrix=Array.from({length:WS_SIZE},()=>Array(WS_SIZE).fill(""));
+    wsPlacedWords=[];
+    const dirs=[[0,1],[1,0]];
+    const sorted=[...WS_WORDS].sort((a,b)=>b.length-a.length);
+    sorted.forEach(word=>{
+        let placed=false;
+        for(let attempt=0;attempt<400&&!placed;attempt++){
+            const dir=dirs[Math.floor(Math.random()*dirs.length)];
+            const dr=dir[0],dc=dir[1];
+            const maxR=dr===0?WS_SIZE-1:WS_SIZE-word.length;
+            const maxC=dc===0?WS_SIZE-1:WS_SIZE-word.length;
+            const r=Math.floor(Math.random()*(maxR+1));
+            const c=Math.floor(Math.random()*(maxC+1));
+            let fits=true;
+            for(let i=0;i<word.length;i++){
+                const nr=r+dr*i,nc=c+dc*i;
+                if(nr>=WS_SIZE||nc>=WS_SIZE){fits=false;break;}
+                if(wsMatrix[nr][nc]!==""&&wsMatrix[nr][nc]!==word[i]){fits=false;break;}
+            }
+            if(fits){
+                for(let i=0;i<word.length;i++) wsMatrix[r+dr*i][c+dc*i]=word[i];
+                wsPlacedWords.push({word,r,c,dr,dc,endR:r+dr*(word.length-1),endC:c+dc*(word.length-1)});
+                placed=true;
+            }
+        }
+    });
+    const alpha="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    for(let r=0;r<WS_SIZE;r++) for(let c=0;c<WS_SIZE;c++)
+        if(!wsMatrix[r][c]) wsMatrix[r][c]=alpha[Math.floor(Math.random()*26)];
+}
+function initSopa(){
+    wsFound=new Set(); wsFirstClick=null; buildSopa();
+    const wDiv=document.getElementById("ws-words"); wDiv.innerHTML="";
+    WS_WORDS.forEach(w=>{
+        const sp=document.createElement("span");
+        sp.className="ws-word-chip"; sp.textContent=w; sp.id="wsw-"+w; wDiv.appendChild(sp);
+    });
+    document.getElementById("ws-total").textContent=WS_WORDS.length;
+    document.getElementById("ws-count").textContent=0;
+    const tbl=document.getElementById("ws-table"); tbl.innerHTML="";
+    for(let r=0;r<WS_SIZE;r++){
+        const tr=document.createElement("tr");
+        for(let c=0;c<WS_SIZE;c++){
+            const td=document.createElement("td");
+            td.textContent=wsMatrix[r][c]; td.dataset.r=r; td.dataset.c=c;
+            td.style.cssText="width:30px;height:30px;text-align:center;vertical-align:middle;font-size:.85rem;font-weight:800;cursor:pointer;border:1px solid #dce8ff;color:#2c3e50;background:white;font-family:Poppins,sans-serif;user-select:none;-webkit-user-select:none;";
+            td.addEventListener("click",()=>wsClick(r,c,td)); tr.appendChild(td);
+        }
+        tbl.appendChild(tr);
+    }
+}
+function wsClick(r,c,td){
+    if(td.style.background==="rgb(200, 230, 201)") return;
+    if(!wsFirstClick){
+        document.querySelectorAll("[data-r]").forEach(el=>{ if(el.style.background==="rgb(255, 249, 196)") el.style.background="white"; });
+        wsFirstClick={r,c}; td.style.background="#fff9c4"; td.style.color="#e67e22";
+    } else {
+        const r1=wsFirstClick.r, c1=wsFirstClick.c;
+        const firstEl=document.querySelector(`[data-r="${r1}"][data-c="${c1}"]`);
+        if(firstEl&&firstEl.style.background!=="rgb(200, 230, 201)") firstEl.style.background="white";
+        firstEl&&(firstEl.style.color="#2c3e50");
+        if(r1===r&&c1===c){wsFirstClick=null;return;}
+        const dr=r-r1, dc=c-c1;
+        if(dr!==0&&dc!==0){
+            wsFirstClick={r,c};
+            document.querySelectorAll("[data-r]").forEach(el=>{ if(el.style.background==="rgb(255, 249, 196)") el.style.background="white"; });
+            td.style.background="#fff9c4"; td.style.color="#e67e22"; return;
+        }
+        const len=Math.max(Math.abs(dr),Math.abs(dc))+1;
+        const stepR=dr===0?0:dr>0?1:-1;
+        const stepC=dc===0?0:dc>0?1:-1;
+        const cells=[];
+        for(let i=0;i<len;i++) cells.push([r1+stepR*i,c1+stepC*i]);
+        const word=cells.map(([cr,cc])=>wsMatrix[cr][cc]).join("");
+        const wordRev=word.split("").reverse().join("");
+        const matched=WS_WORDS.find(w=>(w===word||w===wordRev)&&!wsFound.has(w));
+        if(matched){
+            wsFound.add(matched);
+            cells.forEach(([cr,cc])=>{
+                const el=document.querySelector(`[data-r="${cr}"][data-c="${cc}"]`);
+                if(el){el.style.background="#c8e6c9";el.style.color="#1b5e20";el.style.fontWeight="900";}
+            });
+            const chip=document.getElementById("wsw-"+matched);
+            if(chip) chip.classList.add("found");
+            document.getElementById("ws-count").textContent=wsFound.size;
+            if(wsFound.size===WS_WORDS.length) showFb(5,1,"¡Encontraste todas las palabras! 🎉");
+        } else {
+            cells.forEach(([cr,cc])=>{
+                const el=document.querySelector(`[data-r="${cr}"][data-c="${cc}"]`);
+                if(el){el.style.background="#ffebee";setTimeout(()=>{ if(el.style.background==="rgb(255, 235, 238)") el.style.background="white"; },400);}
+            });
+        }
+        wsFirstClick=null;
+    }
+}
+function checkSopa(){
+    const pct=wsFound.size/WS_WORDS.length;
+    showFb(5,pct,wsFound.size+"/"+WS_WORDS.length+" palabras encontradas");
+}
+
+/* ══ SEC 1 ══ */
+function initSec1(){
+    const c=document.getElementById('cont1');c.innerHTML='';
+    D1.forEach((it,idx)=>{
+        const row=document.createElement('div');row.className='def-row';
+        const ops=[...it.ops,it.a].filter((v,i,a)=>a.indexOf(v)===i).sort(()=>Math.random()-.5);
+        row.innerHTML=`<span>${idx+1}. ${it.q}</span>
+        <select class="def-sel" id="d1-${idx}">
+            <option value="">— Elegir —</option>
+            ${ops.map(o=>`<option value="${o}">${o}</option>`).join('')}
+        </select>`;
+        c.appendChild(row);
+    });
+}
+function checkSec1(){
+    let ok=0;
+    D1.forEach((it,idx)=>{
+        const sel=document.getElementById('d1-'+idx);
+        sel.classList.remove('ok','err');
+        if(sel.value===it.a){sel.classList.add('ok');ok++;}
+        else sel.classList.add('err');
+    });
+    showFb(1,ok/D1.length,ok+'/'+D1.length+' correctas');
+}
+
+/* ══ SEC 2 ══ */
+let matchOk2c=0;
+function initSec2(){
+    matchSel2=null;matchOk2=0;matchOk2c=0;
+    const left=document.getElementById('m-left');left.innerHTML='';
+    const right=document.getElementById('m-right');right.innerHTML='';
+    const shuffledR=[...D2].sort(()=>Math.random()-.5);
+    D2.forEach((it,i)=>{
+        const bl=document.createElement('button');bl.className='match-btn';bl.textContent=it.l;
+        bl.dataset.idx=i;bl.onclick=()=>matchClick(bl,i,'left');left.appendChild(bl);
+    });
+    shuffledR.forEach(it=>{
+        const br=document.createElement('button');br.className='match-btn';br.textContent=it.r;
+        br.dataset.idx=it.p;br.onclick=()=>matchClick(br,it.p,'right');right.appendChild(br);
+    });
+}
+function matchClick(btn,idx,side){
+    if(btn.classList.contains('solved'))return;
+    if(!matchSel2){
+        document.querySelectorAll('.match-btn.sel').forEach(b=>b.classList.remove('sel'));
+        btn.classList.add('sel');matchSel2={btn,idx,side};return;
+    }
+    if(matchSel2.side===side){
+        document.querySelectorAll('.match-btn.sel').forEach(b=>b.classList.remove('sel'));
+        btn.classList.add('sel');matchSel2={btn,idx,side};return;
+    }
+    if(matchSel2.idx===idx){
+        matchSel2.btn.classList.remove('sel');matchSel2.btn.classList.add('solved');
+        btn.classList.remove('sel');btn.classList.add('solved');
+        matchOk2++;matchSel2=null;
+        if(matchOk2===D2.length) showFb(2,1,'¡Todos los pares correctos!');
+    } else {
+        matchSel2.btn.classList.remove('sel');matchSel2.btn.classList.add('wrong');
+        btn.classList.add('wrong');
+        setTimeout(()=>{matchSel2.btn.classList.remove('wrong');btn.classList.remove('wrong');matchSel2=null;},600);
+    }
+}
+function checkSec2(){showFb(2,matchOk2/D2.length,matchOk2+'/'+D2.length+' pares correctos');}
+
+/* ══ SEC 3 ══ */
+function initSec3(){
+    const c=document.getElementById('cont3');c.innerHTML='';
+    D3.forEach((it,idx)=>{
+        const row=document.createElement('div');row.className='vf-row';
+        row.innerHTML=`<span>${idx+1}. ${it.q}</span>
+        <div class="vf-btns">
+            <button class="vf-btn" id="vf-v-${idx}" onclick="selVF(${idx},'V',this)">V</button>
+            <button class="vf-btn" id="vf-f-${idx}" onclick="selVF(${idx},'F',this)">F</button>
+        </div>`;
+        c.appendChild(row);
+    });
+}
+function selVF(idx,val,btn){
+    const bv=document.getElementById('vf-v-'+idx),bf=document.getElementById('vf-f-'+idx);
+    bv.classList.remove('sel-v','sel-f','ok','err');bf.classList.remove('sel-v','sel-f','ok','err');
+    bv.dataset.chosen='';bf.dataset.chosen='';
+    btn.classList.add(val==='V'?'sel-v':'sel-f');
+    document.getElementById('vf-'+(val==='V'?'v':'f')+'-'+idx).dataset.chosen=val;
+}
+function checkSec3(){
+    let ok=0;
+    D3.forEach((it,idx)=>{
+        const bv=document.getElementById('vf-v-'+idx),bf=document.getElementById('vf-f-'+idx);
+        const chosen=bv.dataset.chosen==='V'?'V':bf.dataset.chosen==='F'?'F':'';
+        const correct=it.r?'V':'F';
+        bv.classList.remove('ok','err','sel-v','sel-f');bf.classList.remove('ok','err','sel-v','sel-f');
+        if(chosen===correct){ok++;
+            if(correct==='V')bv.classList.add('ok');else bf.classList.add('ok');
+        } else {
+            if(chosen==='V')bv.classList.add('err');else if(chosen==='F')bf.classList.add('err');
+            if(correct==='V')bv.classList.add('ok');else bf.classList.add('ok');
+        }
+    });
+    showFb(3,ok/D3.length,ok+'/'+D3.length+' correctas');
+}
+
+/* ══ UPLOAD ══ */
+function goUpload(){
+    clearInterval(sInt);
+    document.getElementById('hud-sec').textContent='--:--';
+    showScreen('screen-upload');
+}
+function handleUpload(input){
+    if(!input.files||!input.files[0])return;
+    uploadedFile=input.files[0];
+    uploadPts=1;
+    document.getElementById('upload-zone').classList.add('uploaded');
+    document.getElementById('upload-status').style.display='block';
+    document.getElementById('upload-status').innerHTML='✅ Archivo cargado: <b>'+uploadedFile.name+'</b>';
+}
+
+/* ══ TEST FINAL ══ */
+function goTest(){
+    clearInterval(sInt);
+    document.getElementById('hud-sec').textContent='--:--';
+    showScreen('screen-test');
+    quizPool=[...BANK_Q].sort(()=>Math.random()-.5).slice(0,10);
+    qIdx=0;qScore=0;renderQ();
+    let t=uploadedFile?600:300;
+    const td=document.getElementById('test-timer');
+    td.textContent=uploadedFile?'10:00':'05:00';
+    testInt=setInterval(()=>{
+        t--;const m=Math.floor(t/60),s=t%60;td.textContent=m+':'+(s<10?'0'+s:s);
+        if(t<=30)td.className='tbadge danger';
+        else if(t<=120)td.className='tbadge warn';
+        if(t<=0)finishTest();
+    },1000);
+}
+function renderQ(){
+    if(qIdx>=10){finishTest();return;}
+    const q=quizPool[qIdx];
+    document.getElementById('qcount').textContent='Pregunta '+(qIdx+1)+'/10';
+    document.getElementById('qbar').style.width=(((qIdx+1)/10)*100)+'%';
+    const opts=[q.a,...q.o].sort(()=>Math.random()-.5);
+    document.getElementById('quiz-box').innerHTML=
+        `<p style="font-weight:800;color:var(--secondary);margin-bottom:14px;font-size:1rem;">${q.q}</p>`+
+        opts.map(op=>`<label class="q-opt"><input type="radio" name="qq" value="${op===q.a?'1':'0'}"> ${op}</label>`).join('');
+}
+function nextQ(){
+    const s=document.querySelector('input[name="qq"]:checked');
+    if(!s){alert('Selecciona una respuesta.');return;}
+    if(s.value==='1')qScore++;
+    qIdx++;renderQ();
+}
+function finishTest(){
+    clearInterval(testInt);
+    clearInterval(gInt);
+    testPts=qScore*0.5;
+    guardarNota();
+}
+
+/* ══ GUARDAR EN FIREBASE ══ */
+function guardarNota(){
+    const nota=calcNota();
+    const fecha=new Date().toISOString();
+    const docId=user.replace(/\s+/g,'_').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').slice(0,40);
+    const det={s1:scores[1]??0,s2:scores[2]??0,s3:scores[3]??0,s4:scores[4]??0,s5:scores[5]??0,examen:parseFloat(testPts.toFixed(1))};
+    fbDB.collection('matilde-notas').doc(docId).set({
+        nombre:user,
+        nota:parseFloat(nota.toFixed(2)),
+        detalle:det,
+        modulo:'Unidad 2 Excel',
+        fecha:fecha,
+        archivoSubido:uploadPts===1
+    }).catch(e=>console.warn('FB error:',e));
+    showScreen('screen-result');
+}
+
+/* ══ PANTALLAS ══ */
+function showScreen(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0,0);
+}
+function goSec(n){
+    document.querySelectorAll('.activity').forEach(a=>a.style.display='none');
+    const el=document.getElementById('sec-'+n);
+    if(el) el.style.display='block';
+    showScreen('screen-act');
+    startSecTimer(n,300);
+    if(n===1) initSec1();
+    else if(n===2) initSec2();
+    else if(n===3) initSec3();
+    else if(n===4) initCrucigrama();
+    else if(n===5) initSopa();
+}
+
+/* ══ NOMBRE DESDE URL (pasado por el Sistema / index.html) ══ */
+(function(){
+    const params=new URLSearchParams(window.location.search);
+    const n=params.get('nombre')||sessionStorage.getItem('matilde_nombre')||'';
+    if(n){
+        // Mostrar nombre del estudiante
+        document.getElementById('nombre-confirmado-texto').textContent=n;
+        document.getElementById('bloque-nombre-confirmado').style.display='block';
+
+        // Inyectar en select oculto para que doLogin() funcione
+        const sel=document.getElementById('student-select');
+        const op=document.createElement('option');
+        op.value=n; op.textContent=n; sel.appendChild(op); sel.value=n;
+
+        // Habilitar botón
+        const btn=document.getElementById('btn-ingresar');
+        btn.disabled=false;
+        btn.style.background='';
+        btn.style.pointerEvents='auto';
+        btn.style.cursor='pointer';
+        btn.textContent='🚀 INGRESAR AL AULA';
+    } else {
+        // Sin nombre: no se puede acceder directamente
+        document.getElementById('bloque-nombre-confirmado').style.display='none';
+        document.getElementById('login-err').textContent='⚠️ Debes ingresar desde el sistema de Matilde Esther.';
+        document.getElementById('login-err').style.display='block';
+    }
+})();
+</script>
+</body>
+</html>
